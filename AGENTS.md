@@ -52,5 +52,5 @@ Claude（claude.ai/code）と Codex が同じリポジトリで作業する。Gi
   ```
 - コミット前に `npm run check` を通し、`npm run build` で `dist/` も更新してコミットする。GitHub Actions（`.github/workflows/check.yml`）でも同じ確認が自動で走る。
 - 作業の報告は `docs/handoff/codex-<作業名>.md` に書いてコミットする（変更点・確認結果・未対応点・Claude に頼みたいこと）。
-- Claude は定期的に `codex/*` ブランチを確認し、テストが通れば統合ブランチに取り込み、取り込み結果を `docs/handoff/claude-log.md` に追記する。Codex は作業前にこのログを読む。
+- 利用者から依頼されたときに、Claude が `codex/*` ブランチを確認し、テストが通れば統合ブランチに取り込み、取り込み結果を `docs/handoff/claude-log.md` に追記する。Codex は作業前にこのログを読む。
 - 同じファイルを同時に大きく変えないよう、作業前に `docs/tasks.md` の該当タスクに「（Codex作業中）」と書いてプッシュする。
