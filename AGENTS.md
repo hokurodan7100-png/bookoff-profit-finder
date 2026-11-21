@@ -40,3 +40,17 @@ npm run build && npm start   # http://localhost:3000
 1. `src/server/providers/` に `MarketPriceProvider` / `InventoryProvider` を実装。
 2. `registry.ts` の `PROVIDERS` に登録（自動取得を置き換える場合は `*-auto` を差し替え）。
 3. 利用規約・データ利用条件の確認結果を `docs/data-sources.md` に追記。
+
+## Claude との連携ルール（自動連携）
+
+Claude（claude.ai/code）と Codex が同じリポジトリで作業する。GitHub を受け渡し場所にする。
+
+- 統合ブランチは `claude/zen-maxwell-f115t5`。Claude が管理し、Codex の変更もここに取り込む。
+- Codex は統合ブランチの最新から `codex/<作業名>` ブランチを作って作業し、そこにプッシュする（統合ブランチや main へ直接プッシュしない）。
+  ```bash
+  git fetch origin && git switch -c codex/<作業名> origin/claude/zen-maxwell-f115t5
+  ```
+- コミット前に `npm run check` を通し、`npm run build` で `dist/` も更新してコミットする。GitHub Actions（`.github/workflows/check.yml`）でも同じ確認が自動で走る。
+- 作業の報告は `docs/handoff/codex-<作業名>.md` に書いてコミットする（変更点・確認結果・未対応点・Claude に頼みたいこと）。
+- Claude は定期的に `codex/*` ブランチを確認し、テストが通れば統合ブランチに取り込み、取り込み結果を `docs/handoff/claude-log.md` に追記する。Codex は作業前にこのログを読む。
+- 同じファイルを同時に大きく変えないよう、作業前に `docs/tasks.md` の該当タスクに「（Codex作業中）」と書いてプッシュする。
