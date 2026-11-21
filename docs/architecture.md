@@ -102,6 +102,14 @@ interface StoreProvider { ...（店舗マスタ） }
 
 ## 7. 認証と配布
 
-- `APP_PASSWORD` を設定すると全ページにBasic認証（ユーザー名は任意、比較は定数時間）。
+- 認証は `src/server/auth.ts`。方式は次の優先順で自動で決まる（`GET /api/me` の `authMode`）。
+  1. `users` 表に1人以上 → **ユーザー別のBasic認証**（accounts）。パスワードは scrypt（ソルト付き）で保存し、API・画面・ログには出さない。
+  2. `APP_PASSWORD` あり → 共有パスワード（password、ユーザー名は任意、管理者扱い、比較は定数時間）。
+  3. どちらも無し → 認証なし（none、管理者扱い）。
+- 権限：`admin`（ユーザー管理・設定・店舗マスタCSV・デモ）／`editor`（商品・在庫・相場の登録・削除、CSV取込、統合、自動取得）／`viewer`（GETのみ。CSV出力可）。判定は `requiredRole()`。不足は403。
+- 最後の管理者は降格・削除できない（ただし唯一のユーザーなら削除でき、元の方式に戻る）。最初のユーザーは管理者に限る。
+- 同じ接続元からパスワードの間違いが15分に10回で429（15分ロック）。認証済みヘッダは10分キャッシュ（ユーザー変更時に破棄）。
+- **HTTPS**：`TLS_CERT_FILE` と `TLS_KEY_FILE`（PEM）を両方指定すると `node:https` で待ち受け、HSTSヘッダを付ける。インターネット公開時は、Let's Encrypt 等の証明書を指定するか、Caddy・nginx などHTTPSのリバースプロキシの後ろに置く（その場合は `HOST=127.0.0.1` にしてプロキシ経由だけにする）。Basic認証はHTTPだと盗聴されうるため、公開時はHTTPS必須。
+- API：`GET /api/me`、`GET/POST /api/users`、`PUT/DELETE /api/users/:id`（管理者のみ）。
 - `dist/main.mjs` は依存（zod・店舗データ）を同梱した単一ファイル。`dist/public` と合わせ、Node.js 22.13以上だけで動く。
 - 起動スクリプトは `node --env-file-if-exists=config.env dist/main.mjs` を実行する。

@@ -1,11 +1,11 @@
 import { openDetail } from './detail.ts';
 import { api, type Meta } from '../api.ts';
-import { $, $$, html, mount, options, toast, type Raw } from '../dom.ts';
+import { $, $$, html, mount, options, raw, toast, type Raw } from '../dom.ts';
 import { decodeCsvBytes } from '../../shared/csv.ts';
 import { jstDateTime, signedYen, yen } from '../../shared/format.ts';
-import { BRAND_GROUP_LABEL, CATEGORIES, MARKETPLACE_LABEL, MARKETPLACES, NA, PRICE_TYPE_LABEL, type Category, type Marketplace } from '../../shared/constants.ts';
+import { ROLES, ROLE_LABEL, BRAND_GROUP_LABEL, CATEGORIES, MARKETPLACE_LABEL, MARKETPLACES, NA, PRICE_TYPE_LABEL, type Category, type Marketplace } from '../../shared/constants.ts';
 import { calcProfit, feeTerms } from '../../shared/profit.ts';
-import type { CategoryFee, DuplicateGroup, EstimateResult, ImportResult, Settings, Store, StoreDiff, StoreSummary } from '../../shared/types.ts';
+import type { AppUser, Me, CategoryFee, DuplicateGroup, EstimateResult, ImportResult, Settings, Store, StoreDiff, StoreSummary } from '../../shared/types.ts';
 import type { PriceType } from '../../shared/constants.ts';
 import { openDialog } from './detail.ts';
 
@@ -225,9 +225,77 @@ export function renderImport(root: HTMLElement, meta: Meta, onDataChange: (reloa
   });
 }
 
+// ---------------- ユーザー ----------------
+const MODE_TEXT: Record<Me['authMode'], string> = {
+  accounts: 'ユーザー別のログイン（ユーザー名とパスワード）',
+  password: '共有パスワード（APP_PASSWORD）。ユーザーを作ると、ユーザー別のログインに切り替わります',
+  none: 'ログインなし（同じWi-Fiの人は誰でも開けます）。ユーザーを作ると、ユーザー別のログインに切り替わります',
+};
+
+async function renderUsers(host: HTMLElement, me: Me) {
+  const { users, authMode } = await api.users();
+  // 再描画のたびに入れ物を作り直し、イベントが重複して登録されないようにする
+  const el = document.createElement('div');
+  host.replaceChildren(el);
+  const first = users.length === 0;
+  const row = (u: AppUser) => html`<tr class="border-t border-slate-100" data-testid="user-row" data-user="${u.id}">
+    <td class="p-2 font-medium">${u.username}${u.username === me.username ? html` <span class="text-xs text-slate-500">（あなた）</span>` : ''}</td>
+    <td class="p-2"><select class="inp !w-auto !py-1" data-role="${u.id}" aria-label="${u.username} の権限">${options(ROLES, u.role, ROLE_LABEL)}</select></td>
+    <td class="p-2 text-xs text-slate-500 whitespace-nowrap">${jstDateTime(u.lastLoginAt)}</td>
+    <td class="p-2 whitespace-nowrap"><button type="button" class="text-xs text-sky-700 underline" data-pw="${u.id}">パスワード変更</button>
+      <button type="button" class="ml-2 text-xs text-red-600 underline" data-del="${u.id}">削除</button></td></tr>`;
+  mount(el, card('ユーザー', html`
+    <p class="mb-2 text-sm">今のログイン方式：<b data-testid="auth-mode">${MODE_TEXT[authMode]}</b></p>
+    <p class="mb-3 text-xs text-slate-500">権限：管理者＝すべて（ユーザー・設定・店舗マスタ・デモ）／編集者＝商品・在庫・相場の登録、CSV取込、自動取得／閲覧のみ＝見る・CSV出力だけ。
+      ${me.https ? '' : html`<b class="text-amber-700">今は暗号化なし（HTTP）です。インターネットに公開するときはHTTPSにしてください（TLS_CERT_FILE・TLS_KEY_FILE）。</b>`}</p>
+    ${users.length ? html`<div class="mb-3 overflow-x-auto"><table class="w-full text-sm" data-testid="users-table"><thead class="text-left text-xs text-slate-500"><tr><th class="p-2">ユーザー名</th><th class="p-2">権限</th><th class="p-2">最終ログイン</th><th class="p-2"></th></tr></thead>
+      <tbody>${users.map(row)}</tbody></table></div>` : ''}
+    <form id="user-form" class="grid gap-2 sm:grid-cols-[1fr_1fr_auto_auto] sm:items-end">
+      <label><span class="lbl">ユーザー名</span><input class="inp" name="username" required maxlength="40" autocomplete="off"></label>
+      <label><span class="lbl">パスワード（8文字以上）</span><input class="inp" name="password" type="password" required minlength="8" autocomplete="new-password"></label>
+      <label><span class="lbl">権限</span><select class="inp" name="role" ${first ? raw('disabled') : ''}>${options(ROLES, first ? 'admin' : 'editor', ROLE_LABEL)}</select></label>
+      <button class="btn-primary">${first ? '最初の管理者を作る' : 'ユーザーを追加'}</button>
+    </form>
+    ${first ? html`<p class="mt-2 text-xs text-amber-700">作った直後から、開くときにこのユーザー名とパスワードを聞かれます。忘れないよう控えてください。</p>` : ''}`));
+  const reload = () => renderUsers(host, me);
+  $<HTMLFormElement>('#user-form', el)!.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target as HTMLFormElement);
+    try {
+      await api.createUser({ username: String(fd.get('username')), password: String(fd.get('password')), role: first ? 'admin' : String(fd.get('role')) });
+      if (first) { toast('管理者を作りました。ユーザー名とパスワードを入力してください'); setTimeout(() => location.reload(), 800); return; }
+      toast('ユーザーを追加しました'); await reload();
+    } catch (err) { toast((err as Error).message, 'error'); }
+  });
+  $$<HTMLSelectElement>('[data-role]', el).forEach((sel) => sel.addEventListener('change', async () => {
+    try { await api.updateUser(Number(sel.dataset.role), { role: sel.value }); toast('権限を変更しました'); }
+    catch (err) { toast((err as Error).message, 'error'); }
+    await reload();
+  }));
+  el.addEventListener('click', async (e) => {
+    const t = e.target as HTMLElement;
+    const pw = t.closest<HTMLElement>('[data-pw]'), del = t.closest<HTMLElement>('[data-del]');
+    if (pw) {
+      const v = prompt('新しいパスワード（8文字以上）');
+      if (!v) return;
+      try { await api.updateUser(Number(pw.dataset.pw), { password: v }); toast('パスワードを変更しました'); } catch (err) { toast((err as Error).message, 'error'); }
+    }
+    if (del) {
+      const u = users.find((x) => x.id === Number(del.dataset.del))!;
+      if (!confirm(`${u.username} を削除しますか？`)) return;
+      try {
+        const r = await api.deleteUser(u.id);
+        toast(r.authMode === 'accounts' ? 'ユーザーを削除しました' : 'ユーザーがいなくなったため、ユーザー別のログインを解除しました');
+        await reload();
+      } catch (err) { toast((err as Error).message, 'error'); }
+    }
+  });
+}
+
 // ---------------- 設定 ----------------
-export async function renderSettings(root: HTMLElement) {
+export async function renderSettings(root: HTMLElement, me: Me) {
   const s = await api.settings();
+  const isAdmin = me.role === 'admin';
   const mpBlock = (m: Marketplace) => html`<fieldset class="rounded-lg border border-slate-200 p-3"><legend class="px-1 font-semibold">${MARKETPLACE_LABEL[m]}</legend>
     <div class="grid grid-cols-2 gap-2">
       <label><span class="lbl">販売手数料率（%）</span><input class="inp" name="${m}.fee" type="number" min="0" max="100" step="0.01" required value="${s.marketplaces[m].feeRatePercent}"></label>
@@ -254,9 +322,11 @@ export async function renderSettings(root: HTMLElement) {
         <input class="inp" name="estimateDays" type="number" min="0" max="3650" step="1" value="${s.estimateDays}"></label>
       <label class="block"><span class="lbl">手数料の端数処理</span><select class="inp" name="rounding">${options(['floor', 'round', 'ceil'], s.rounding, { floor: '切り捨て', round: '四捨五入', ceil: '切り上げ' })}</select></label>
       <div class="rounded-lg bg-slate-50 p-3 text-sm" id="preview"></div>
-      <button class="btn-primary w-full">設定を保存</button>
-      <button type="button" class="btn-secondary w-full" id="recompute">推定相場を今すぐ再計算</button></div>`)}
-  </form>`);
+      ${isAdmin ? html`<button class="btn-primary w-full">設定を保存</button>` : html`<p class="rounded bg-slate-100 p-2 text-sm text-slate-600">設定の変更は管理者だけができます。</p>`}
+      ${me.role !== 'viewer' ? html`<button type="button" class="btn-secondary w-full" id="recompute">推定相場を今すぐ再計算</button>` : ''}</div>`)}
+  </form>
+  ${isAdmin ? html`<div id="users" class="mt-4"></div>` : ''}`);
+  if (isAdmin) await renderUsers($('#users', root)!, me);
   const form = $<HTMLFormElement>('#settings-form', root)!;
   const read = (): Settings => {
     const fd = new FormData(form);
@@ -287,7 +357,7 @@ export async function renderSettings(root: HTMLElement) {
     mount($('#preview', root)!, html`<div class="mb-1 text-xs text-slate-500">計算例：本を¥500で仕入れ、¥2,000で販売</div>${MARKETPLACES.map(ex)}`);
   };
   form.addEventListener('input', preview);
-  $('#recompute', root)!.addEventListener('click', async () => {
+  $('#recompute', root)?.addEventListener('click', async () => {
     try { const r = await api.recomputeEstimates(); toast(`推定相場を${r.saved}件算出しました（直近${r.days}日の売却済み価格の中央値・実データのみ）`); }
     catch (err) { toast((err as Error).message, 'error'); }
   });

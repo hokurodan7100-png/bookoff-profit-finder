@@ -84,3 +84,8 @@ export const PRICE_TYPE_LABEL: Record<PriceType, string> = {
 export const CONDITIONS = ['新品', '未使用に近い', '目立った傷なし', 'やや傷あり', '傷あり', '状態未確認'] as const;
 
 export const NA = '未取得';
+
+/** 利用者の権限。admin：全操作（ユーザー管理・設定・店舗マスタ・デモ）、editor：商品・在庫・相場の登録と取込、viewer：閲覧とCSV出力のみ */
+export const ROLES = ['admin', 'editor', 'viewer'] as const;
+export type Role = (typeof ROLES)[number];
+export const ROLE_LABEL: Record<Role, string> = { admin: '管理者', editor: '編集者', viewer: '閲覧のみ' };

@@ -1,4 +1,6 @@
 import { api, type Meta } from './api.ts';
+import type { Me } from '../shared/types.ts';
+import { ROLE_LABEL } from '../shared/constants.ts';
 import { $, html, mount, toast } from './dom.ts';
 import { renderList } from './views/list.ts';
 import { renderCheck } from './views/check.ts';
@@ -14,6 +16,7 @@ const NAV = [
 ];
 
 let meta: Meta;
+let me: Me;
 
 function route(): { path: string; query: URLSearchParams } {
   const h = location.hash.replace(/^#/, '') || '/';
@@ -28,6 +31,7 @@ function shell() {
         <a href="#/" class="flex items-center gap-2 font-bold"><span class="grid h-8 w-8 place-items-center rounded-lg bg-amber-400 text-slate-900">¥</span>
           <span class="leading-tight">BOOKOFF利益商品検索<span class="block text-[10px] font-normal text-slate-300">静岡・山梨・神奈川</span></span></a>
         <nav class="ml-auto hidden md:flex gap-1" aria-label="メイン">${NAV.map((n) => html`<a href="#${n.path}" data-nav="${n.path}" class="rounded-md px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-800">${n.label}</a>`)}</nav>
+        <span id="whoami" class="ml-auto text-right text-[11px] leading-tight text-slate-300 md:ml-2"></span>
       </div>
     </header>
     <div id="banner"></div>
@@ -47,7 +51,17 @@ function banner() {
     <a href="#/import" class="ml-auto underline">デモの削除・CSV取込へ</a></div></div>`);
 }
 
-async function refreshMeta() { meta = await api.meta(); banner(); }
+function whoami() {
+  const el = $('#whoami')!;
+  if (me.authMode !== 'accounts') { mount(el, html``); return; }
+  mount(el, html`<span data-testid="whoami">${me.username}<span class="block">${ROLE_LABEL[me.role]}</span></span>`);
+}
+
+async function refreshMeta() {
+  [meta, me] = await Promise.all([api.meta(), api.me()]);
+  banner(); whoami();
+  if (me.role === 'viewer') $('#banner')!.insertAdjacentHTML('beforeend', html`<div class="border-b border-sky-200 bg-sky-50 px-3 py-1.5 text-center text-xs text-sky-900" data-testid="viewer-banner">閲覧のみの権限です。登録・取込・削除はできません（CSV出力はできます）。</div>`.value);
+}
 
 async function render() {
   const { path, query } = route();
@@ -65,7 +79,7 @@ async function render() {
     if (path === '/check') await renderCheck(view, meta);
     else if (path === '/stores') await renderStores(view, meta);
     else if (path === '/import') renderImport(view, meta, async (reload) => { await refreshMeta(); if (reload) renderImport(view, meta, () => refreshMeta()); });
-    else if (path === '/settings') await renderSettings(view);
+    else if (path === '/settings') await renderSettings(view, me);
     else if (path === '/sources') await renderSources(view);
     else await renderList(view, meta, query);
   } catch (e) {

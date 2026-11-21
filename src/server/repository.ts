@@ -1,7 +1,7 @@
 import type { DatabaseSync, SQLInputValue } from 'node:sqlite';
 import { nowIso } from './db.ts';
-import type { MarketPrice, Product, Settings, StockOffer, Store, StoreEvent } from '../shared/types.ts';
-import type { Category, Marketplace, PriceType, StockStatus } from '../shared/constants.ts';
+import type { AppUser, MarketPrice, Product, Settings, StockOffer, Store, StoreEvent } from '../shared/types.ts';
+import type { Category, Marketplace, PriceType, Role, StockStatus } from '../shared/constants.ts';
 import { brandGroupOf, type BrandType, type Prefecture, type StoreStatus } from '../shared/constants.ts';
 
 type Row = Record<string, SQLInputValue>;
@@ -65,6 +65,14 @@ const toPrice = (r: Row): MarketPrice => ({
   isDemo: Number(r.is_demo) === 1,
   note: (r.note as string) ?? null,
   createdAt: r.created_at as string,
+});
+
+const toUser = (r: Row): AppUser => ({
+  id: Number(r.id),
+  username: r.username as string,
+  role: r.role as Role,
+  createdAt: r.created_at as string,
+  lastLoginAt: (r.last_login_at as string) ?? null,
 });
 
 export interface StoreInput {
@@ -391,5 +399,44 @@ export class Repository {
   saveSettings(s: Settings) {
     this.db.prepare(`INSERT INTO settings (key,value_json,updated_at) VALUES ('app',?,?)
       ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json, updated_at=excluded.updated_at`).run(JSON.stringify(s), nowIso());
+  }
+
+  // ---------- users ----------
+  // password_hash は Repository の外（auth.ts）でだけ扱い、画面・APIには返さない
+  countUsers(): number {
+    return Number((this.db.prepare('SELECT COUNT(*) AS n FROM users').get() as Row).n);
+  }
+  countAdmins(): number {
+    return Number((this.db.prepare("SELECT COUNT(*) AS n FROM users WHERE role = 'admin'").get() as Row).n);
+  }
+  listUsers(): AppUser[] {
+    return (this.db.prepare('SELECT * FROM users ORDER BY id').all() as Row[]).map(toUser);
+  }
+  getUser(id: number): AppUser | null {
+    const r = this.db.prepare('SELECT * FROM users WHERE id = ?').get(id) as Row | undefined;
+    return r ? toUser(r) : null;
+  }
+  findUserForLogin(username: string): { user: AppUser; passwordHash: string } | null {
+    const r = this.db.prepare('SELECT * FROM users WHERE username = ?').get(username) as Row | undefined;
+    return r ? { user: toUser(r), passwordHash: r.password_hash as string } : null;
+  }
+  insertUser(u: { username: string; passwordHash: string; role: Role }): AppUser {
+    const now = nowIso();
+    const r = this.db.prepare('INSERT INTO users (username,password_hash,role,created_at,updated_at) VALUES (?,?,?,?,?)')
+      .run(u.username, u.passwordHash, u.role, now, now);
+    return this.getUser(Number(r.lastInsertRowid))!;
+  }
+  updateUser(id: number, u: { role?: Role; passwordHash?: string }): AppUser | null {
+    const cur = this.getUser(id);
+    if (!cur) return null;
+    if (u.role) this.db.prepare('UPDATE users SET role = ?, updated_at = ? WHERE id = ?').run(u.role, nowIso(), id);
+    if (u.passwordHash) this.db.prepare('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?').run(u.passwordHash, nowIso(), id);
+    return this.getUser(id);
+  }
+  deleteUser(id: number): boolean {
+    return Number(this.db.prepare('DELETE FROM users WHERE id = ?').run(id).changes) > 0;
+  }
+  touchLogin(id: number) {
+    this.db.prepare('UPDATE users SET last_login_at = ? WHERE id = ?').run(nowIso(), id);
   }
 }

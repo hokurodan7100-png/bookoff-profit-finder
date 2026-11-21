@@ -7,6 +7,8 @@ var __export = (target, all) => {
 
 // src/server/main.ts
 import { createServer } from "node:http";
+import { createServer as createHttpsServer } from "node:https";
+import { readFileSync } from "node:fs";
 import { networkInterfaces } from "node:os";
 import { resolve } from "node:path";
 
@@ -86,6 +88,15 @@ CREATE TABLE IF NOT EXISTS market_prices (
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_market_product ON market_prices(product_id);
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  role TEXT NOT NULL CHECK (role IN ('admin','editor','viewer')),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  last_login_at TEXT
+);
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value_json TEXT NOT NULL,
@@ -101,7 +112,7 @@ function openDb(path) {
   migrate(db);
   return db;
 }
-var SCHEMA_VERSION = 3;
+var SCHEMA_VERSION = 4;
 function migrate(db) {
   const v = Number(db.prepare("PRAGMA user_version").get().user_version);
   if (v >= SCHEMA_VERSION) return;
@@ -185,6 +196,8 @@ var PRICE_TYPE_LABEL = {
 };
 var CONDITIONS = ["\u65B0\u54C1", "\u672A\u4F7F\u7528\u306B\u8FD1\u3044", "\u76EE\u7ACB\u3063\u305F\u50B7\u306A\u3057", "\u3084\u3084\u50B7\u3042\u308A", "\u50B7\u3042\u308A", "\u72B6\u614B\u672A\u78BA\u8A8D"];
 var NA = "\u672A\u53D6\u5F97";
+var ROLES = ["admin", "editor", "viewer"];
+var ROLE_LABEL = { admin: "\u7BA1\u7406\u8005", editor: "\u7DE8\u96C6\u8005", viewer: "\u95B2\u89A7\u306E\u307F" };
 
 // src/server/repository.ts
 var toStore = (r) => ({
@@ -243,6 +256,13 @@ var toPrice = (r) => ({
   isDemo: Number(r.is_demo) === 1,
   note: r.note ?? null,
   createdAt: r.created_at
+});
+var toUser = (r) => ({
+  id: Number(r.id),
+  username: r.username,
+  role: r.role,
+  createdAt: r.created_at,
+  lastLoginAt: r.last_login_at ?? null
 });
 var Repository = class {
   constructor(db) {
@@ -626,11 +646,47 @@ var Repository = class {
     this.db.prepare(`INSERT INTO settings (key,value_json,updated_at) VALUES ('app',?,?)
       ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json, updated_at=excluded.updated_at`).run(JSON.stringify(s), nowIso());
   }
+  // ---------- users ----------
+  // password_hash は Repository の外（auth.ts）でだけ扱い、画面・APIには返さない
+  countUsers() {
+    return Number(this.db.prepare("SELECT COUNT(*) AS n FROM users").get().n);
+  }
+  countAdmins() {
+    return Number(this.db.prepare("SELECT COUNT(*) AS n FROM users WHERE role = 'admin'").get().n);
+  }
+  listUsers() {
+    return this.db.prepare("SELECT * FROM users ORDER BY id").all().map(toUser);
+  }
+  getUser(id) {
+    const r = this.db.prepare("SELECT * FROM users WHERE id = ?").get(id);
+    return r ? toUser(r) : null;
+  }
+  findUserForLogin(username) {
+    const r = this.db.prepare("SELECT * FROM users WHERE username = ?").get(username);
+    return r ? { user: toUser(r), passwordHash: r.password_hash } : null;
+  }
+  insertUser(u) {
+    const now = nowIso();
+    const r = this.db.prepare("INSERT INTO users (username,password_hash,role,created_at,updated_at) VALUES (?,?,?,?,?)").run(u.username, u.passwordHash, u.role, now, now);
+    return this.getUser(Number(r.lastInsertRowid));
+  }
+  updateUser(id, u) {
+    const cur = this.getUser(id);
+    if (!cur) return null;
+    if (u.role) this.db.prepare("UPDATE users SET role = ?, updated_at = ? WHERE id = ?").run(u.role, nowIso(), id);
+    if (u.passwordHash) this.db.prepare("UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?").run(u.passwordHash, nowIso(), id);
+    return this.getUser(id);
+  }
+  deleteUser(id) {
+    return Number(this.db.prepare("DELETE FROM users WHERE id = ?").run(id).changes) > 0;
+  }
+  touchLogin(id) {
+    this.db.prepare("UPDATE users SET last_login_at = ? WHERE id = ?").run(nowIso(), id);
+  }
 };
 
 // src/server/api.ts
 import { readFile } from "node:fs/promises";
-import { timingSafeEqual, createHash } from "node:crypto";
 import { extname, join, normalize as normalize2 } from "node:path";
 
 // node_modules/zod/v3/external.js
@@ -4674,6 +4730,104 @@ var coerce = {
 };
 var NEVER = INVALID;
 
+// src/server/auth.ts
+import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+var SCRYPT = { N: 16384, r: 8, p: 1, keylen: 32 };
+function hashPassword(password) {
+  const salt = randomBytes(16);
+  const key = scryptSync(password, salt, SCRYPT.keylen, { N: SCRYPT.N, r: SCRYPT.r, p: SCRYPT.p });
+  return `scrypt$${SCRYPT.N}$${SCRYPT.r}$${SCRYPT.p}$${salt.toString("base64")}$${key.toString("base64")}`;
+}
+function verifyPassword(password, stored) {
+  const [alg, n, r, p, salt, key] = stored.split("$");
+  if (alg !== "scrypt" || !salt || !key) return false;
+  const expected = Buffer.from(key, "base64");
+  const got = scryptSync(password, Buffer.from(salt, "base64"), expected.length, { N: Number(n), r: Number(r), p: Number(p) });
+  return timingSafeEqual(got, expected);
+}
+function checkPassword(header, password) {
+  const cred = parseBasic(header);
+  if (!cred) return false;
+  const h = (v) => createHash("sha256").update(v).digest();
+  return timingSafeEqual(h(cred.password), h(password));
+}
+function parseBasic(header) {
+  if (!header?.startsWith("Basic ")) return null;
+  const decoded = Buffer.from(header.slice(6), "base64").toString("utf8");
+  const i = decoded.indexOf(":");
+  if (i < 0) return null;
+  return { username: decoded.slice(0, i), password: decoded.slice(i + 1) };
+}
+function requiredRole(method, path) {
+  if (path === "/api/me") return "viewer";
+  if (path.startsWith("/api/users")) return "admin";
+  if (method === "GET" || method === "HEAD") return "viewer";
+  if (path === "/api/settings" || path === "/api/demo" || path === "/api/import/stores") return "admin";
+  return "editor";
+}
+var RANK = { viewer: 0, editor: 1, admin: 2 };
+var hasRole = (role, need) => RANK[role] >= RANK[need];
+var MAX_FAILS = 10;
+var FAIL_WINDOW_MS = 15 * 60 * 1e3;
+var CACHE_MS = 10 * 60 * 1e3;
+var Authenticator = class {
+  constructor(repo, sharedPassword) {
+    this.repo = repo;
+    this.sharedPassword = sharedPassword;
+  }
+  repo;
+  sharedPassword;
+  /** 認証済みヘッダの短期キャッシュ（毎リクエストのscryptを避ける）。キーはヘッダのSHA-256で、平文は持たない */
+  cache = /* @__PURE__ */ new Map();
+  fails = /* @__PURE__ */ new Map();
+  mode() {
+    if (this.repo.countUsers() > 0) return "accounts";
+    return this.sharedPassword ? "password" : "none";
+  }
+  /** ユーザーの追加・変更・削除のあとに呼ぶ */
+  invalidate() {
+    this.cache.clear();
+  }
+  authenticate(header, clientKey, now = Date.now()) {
+    const mode = this.mode();
+    if (mode === "none") return { ok: true, principal: { username: null, role: "admin", userId: null } };
+    const f = this.fails.get(clientKey);
+    if (f && now - f.since < FAIL_WINDOW_MS && f.count >= MAX_FAILS) {
+      return { ok: false, status: 429, message: "\u30D1\u30B9\u30EF\u30FC\u30C9\u306E\u9593\u9055\u3044\u304C\u7D9A\u3044\u305F\u305F\u3081\u300115\u5206\u307B\u3069\u5F85\u3063\u3066\u304B\u3089\u3084\u308A\u76F4\u3057\u3066\u304F\u3060\u3055\u3044" };
+    }
+    if (mode === "password") {
+      if (checkPassword(header, this.sharedPassword)) {
+        this.fails.delete(clientKey);
+        return { ok: true, principal: { username: null, role: "admin", userId: null } };
+      }
+      return this.fail(clientKey, header, now);
+    }
+    const key = header ? createHash("sha256").update(header).digest("base64") : "";
+    const hit = key ? this.cache.get(key) : void 0;
+    if (hit && hit.expires > now) {
+      const u = this.repo.getUser(hit.userId);
+      if (u) return { ok: true, principal: { username: u.username, role: u.role, userId: u.id } };
+    }
+    const cred = parseBasic(header);
+    const found = cred ? this.repo.findUserForLogin(cred.username.trim()) : null;
+    const ok = cred ? verifyPassword(cred.password, found?.passwordHash ?? DUMMY_HASH) && !!found : false;
+    if (!ok || !found) return this.fail(clientKey, header, now);
+    this.fails.delete(clientKey);
+    this.cache.set(key, { userId: found.user.id, expires: now + CACHE_MS });
+    this.repo.touchLogin(found.user.id);
+    return { ok: true, principal: { username: found.user.username, role: found.user.role, userId: found.user.id } };
+  }
+  fail(clientKey, header, now) {
+    if (header) {
+      const f = this.fails.get(clientKey);
+      if (!f || now - f.since >= FAIL_WINDOW_MS) this.fails.set(clientKey, { count: 1, since: now });
+      else f.count++;
+    }
+    return { ok: false, status: 401, message: this.mode() === "accounts" ? "\u30E6\u30FC\u30B6\u30FC\u540D\u3068\u30D1\u30B9\u30EF\u30FC\u30C9\u304C\u5FC5\u8981\u3067\u3059" : "\u30D1\u30B9\u30EF\u30FC\u30C9\u304C\u5FC5\u8981\u3067\u3059" };
+  }
+};
+var DUMMY_HASH = hashPassword(randomBytes(12).toString("hex"));
+
 // src/shared/codes.ts
 function isbn10to13(isbn10) {
   const s = isbn10.toUpperCase();
@@ -7043,24 +7197,32 @@ var MIME = {
   ".ico": "image/x-icon",
   ".webmanifest": "application/manifest+json"
 };
-function checkPassword(header, password) {
-  if (!header?.startsWith("Basic ")) return false;
-  const decoded = Buffer.from(header.slice(6), "base64").toString("utf8");
-  const given = decoded.slice(decoded.indexOf(":") + 1);
-  const h = (v) => createHash("sha256").update(v).digest();
-  return timingSafeEqual(h(given), h(password));
-}
+var usernameSchema = external_exports.string().trim().min(1, "\u30E6\u30FC\u30B6\u30FC\u540D\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044").max(40).regex(/^[^:\s]+$/, "\u30E6\u30FC\u30B6\u30FC\u540D\u306B\u7A7A\u767D\u3068\u300C:\u300D\u306F\u4F7F\u3048\u307E\u305B\u3093");
+var passwordSchema = external_exports.string().min(8, "\u30D1\u30B9\u30EF\u30FC\u30C9\u306F8\u6587\u5B57\u4EE5\u4E0A").max(200);
+var userCreateSchema = external_exports.object({ username: usernameSchema, password: passwordSchema, role: external_exports.enum(ROLES) });
+var userUpdateSchema = external_exports.object({ role: external_exports.enum(ROLES).optional(), password: passwordSchema.optional() });
 function createHandler(repo, publicDir, providers = createProviders(), opts = {}) {
   const findProvider = (id) => providers.find((p) => p.info.id === id);
+  const auth = new Authenticator(repo, opts.password);
+  const security = opts.https ? { "strict-transport-security": "max-age=31536000" } : {};
   return async (req, res) => {
     const url = new URL(req.url ?? "/", "http://localhost");
     const path = url.pathname;
     const method = req.method ?? "GET";
-    if (opts.password && !checkPassword(req.headers.authorization, opts.password)) {
-      res.writeHead(401, { "www-authenticate": 'Basic realm="BOOKOFF profit finder", charset="UTF-8"', "content-type": "text/plain; charset=utf-8" });
-      return res.end("\u30D1\u30B9\u30EF\u30FC\u30C9\u304C\u5FC5\u8981\u3067\u3059");
+    for (const [k, v] of Object.entries(security)) res.setHeader(k, v);
+    const a = auth.authenticate(req.headers.authorization, req.socket.remoteAddress ?? "");
+    if (!a.ok) {
+      const headers = { "content-type": "text/plain; charset=utf-8" };
+      if (a.status === 401) headers["www-authenticate"] = 'Basic realm="BOOKOFF profit finder", charset="UTF-8"';
+      res.writeHead(a.status, headers);
+      return res.end(a.message);
     }
+    const me = a.principal;
     try {
+      if (path.startsWith("/api/")) {
+        const need = requiredRole(method, path);
+        if (!hasRole(me.role, need)) throw new HttpError(403, `\u3053\u306E\u64CD\u4F5C\u306B\u306F\u300C${ROLE_LABEL[need]}\u300D\u4EE5\u4E0A\u306E\u6A29\u9650\u304C\u5FC5\u8981\u3067\u3059\uFF08\u3042\u306A\u305F\u306F${ROLE_LABEL[me.role]}\uFF09`);
+      }
       if (!path.startsWith("/api/")) return await serveStatic(res, publicDir, path);
       if (method === "GET" && path === "/api/meta") {
         return send(res, 200, {
@@ -7078,6 +7240,40 @@ function createHandler(repo, publicDir, providers = createProviders(), opts = {}
           counts: { stores: repo.countStores(), demo: repo.countDemo(), real: repo.countReal() },
           storeSeed: { source: STORE_SEED_SOURCE, verifiedAt: STORE_SEED_VERIFIED_AT }
         });
+      }
+      if (method === "GET" && path === "/api/me") {
+        return send(res, 200, { username: me.username, role: me.role, authMode: auth.mode(), https: !!opts.https });
+      }
+      if (path === "/api/users") {
+        if (method === "GET") return send(res, 200, { users: repo.listUsers(), authMode: auth.mode() });
+        if (method === "POST") {
+          const b = parse(userCreateSchema, await readBody(req));
+          if (repo.countUsers() === 0 && b.role !== "admin") throw new HttpError(400, "\u6700\u521D\u306E\u30E6\u30FC\u30B6\u30FC\u306F\u7BA1\u7406\u8005\u306B\u3057\u3066\u304F\u3060\u3055\u3044");
+          if (repo.findUserForLogin(b.username)) throw new HttpError(409, "\u305D\u306E\u30E6\u30FC\u30B6\u30FC\u540D\u306F\u4F7F\u308F\u308C\u3066\u3044\u307E\u3059");
+          const u = repo.insertUser({ username: b.username, passwordHash: hashPassword(b.password), role: b.role });
+          auth.invalidate();
+          return send(res, 201, u);
+        }
+      }
+      const um = path.match(/^\/api\/users\/(\d+)$/);
+      if (um) {
+        const id = Number(um[1]);
+        const target = repo.getUser(id);
+        if (!target) throw new HttpError(404, "\u30E6\u30FC\u30B6\u30FC\u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093");
+        const lastAdmin = target.role === "admin" && repo.countAdmins() <= 1;
+        if (method === "PUT") {
+          const b = parse(userUpdateSchema, await readBody(req));
+          if (lastAdmin && b.role && b.role !== "admin") throw new HttpError(400, "\u7BA1\u7406\u8005\u304C1\u4EBA\u3082\u3044\u306A\u304F\u306A\u308B\u305F\u3081\u5909\u66F4\u3067\u304D\u307E\u305B\u3093");
+          const u = repo.updateUser(id, { role: b.role, passwordHash: b.password ? hashPassword(b.password) : void 0 });
+          auth.invalidate();
+          return send(res, 200, u);
+        }
+        if (method === "DELETE") {
+          if (lastAdmin && repo.countUsers() > 1) throw new HttpError(400, "\u7BA1\u7406\u8005\u304C1\u4EBA\u3082\u3044\u306A\u304F\u306A\u308B\u305F\u3081\u524A\u9664\u3067\u304D\u307E\u305B\u3093\uFF08\u5148\u306B\u5225\u306E\u7BA1\u7406\u8005\u3092\u4F5C\u3063\u3066\u304F\u3060\u3055\u3044\uFF09");
+          repo.deleteUser(id);
+          auth.invalidate();
+          return send(res, 200, { deleted: true, authMode: auth.mode() });
+        }
       }
       if (method === "GET" && path === "/api/items") {
         const f = filtersFromParams(url.searchParams);
@@ -7274,21 +7470,28 @@ function startServer(opts = {}) {
   if (demo && isFresh) seedDemo(repo);
   const providers = opts.providers ?? createProviders();
   const password = opts.password ?? process.env.APP_PASSWORD ?? void 0;
-  const server = createServer(createHandler(repo, publicDir, providers, { password: password || void 0 }));
+  const certFile = process.env.TLS_CERT_FILE, keyFile = process.env.TLS_KEY_FILE;
+  if (!opts.tls && !!certFile !== !!keyFile) throw new Error("HTTPS\u306B\u3059\u308B\u306B\u306F TLS_CERT_FILE \u3068 TLS_KEY_FILE \u306E\u4E21\u65B9\u3092\u8A2D\u5B9A\u3057\u3066\u304F\u3060\u3055\u3044");
+  const tls = opts.tls ?? (certFile && keyFile ? { cert: readFileSync(certFile, "utf8"), key: readFileSync(keyFile, "utf8") } : void 0);
+  const handler = createHandler(repo, publicDir, providers, { password: password || void 0, https: !!tls });
+  const server = tls ? createHttpsServer({ cert: tls.cert, key: tls.key }, handler) : createServer(handler);
+  const scheme = tls ? "https" : "http";
   const port = opts.port ?? Number(process.env.PORT ?? 3e3);
   const host = opts.host ?? process.env.HOST ?? "0.0.0.0";
   return new Promise((ok) => {
     server.listen(port, host, () => {
       const addr = server.address();
       const realPort = typeof addr === "object" && addr ? addr.port : port;
-      const url = `http://localhost:${realPort}`;
+      const url = `${scheme}://localhost:${realPort}`;
       if (!opts.quiet) {
         console.log(`BOOKOFF\u5229\u76CA\u5546\u54C1\u691C\u7D22\u30C4\u30FC\u30EB \u8D77\u52D5: ${url}`);
         if (added) console.log(`\u5E97\u8217\u30DE\u30B9\u30BF: ${added}\u5E97\u8217\u3092\u767B\u9332`);
         console.log(`Amazon\u4E2D\u53E4\u306E\u81EA\u52D5\u53D6\u5F97\uFF08Keepa\uFF09: ${process.env.KEEPA_API_KEY ? "\u6709\u52B9" : "\u7121\u52B9\uFF08KEEPA_API_KEY \u672A\u8A2D\u5B9A\uFF09"}`);
-        console.log(`\u30A2\u30AF\u30BB\u30B9\u7528\u30D1\u30B9\u30EF\u30FC\u30C9: ${password ? "\u8A2D\u5B9A\u3042\u308A" : "\u306A\u3057\uFF08\u540C\u3058Wi-Fi\u306E\u4EBA\u306F\u8AB0\u3067\u3082\u958B\u3051\u307E\u3059\u3002APP_PASSWORD \u3067\u8A2D\u5B9A\u3067\u304D\u307E\u3059\uFF09"}`);
+        const users = repo.countUsers();
+        console.log(users > 0 ? `\u30ED\u30B0\u30A4\u30F3: \u30E6\u30FC\u30B6\u30FC\u5225\uFF08${users}\u4EBA\u3002\u7BA1\u7406\u306F\u300C\u8A2D\u5B9A\u300D\u2192\u300C\u30E6\u30FC\u30B6\u30FC\u300D\uFF09` : `\u30A2\u30AF\u30BB\u30B9\u7528\u30D1\u30B9\u30EF\u30FC\u30C9: ${password ? "\u8A2D\u5B9A\u3042\u308A" : "\u306A\u3057\uFF08\u540C\u3058Wi-Fi\u306E\u4EBA\u306F\u8AB0\u3067\u3082\u958B\u3051\u307E\u3059\u3002APP_PASSWORD \u304B\u300C\u8A2D\u5B9A\u300D\u2192\u300C\u30E6\u30FC\u30B6\u30FC\u300D\u3067\u8A2D\u5B9A\u3067\u304D\u307E\u3059\uFF09"}`);
+        console.log(`\u901A\u4FE1: ${tls ? "HTTPS\uFF08\u6697\u53F7\u5316\u3042\u308A\uFF09" : "HTTP\uFF08\u6697\u53F7\u5316\u306A\u3057\u3002\u30A4\u30F3\u30BF\u30FC\u30CD\u30C3\u30C8\u306B\u516C\u958B\u3059\u308B\u5834\u5408\u306FHTTPS\u306B\u3057\u3066\u304F\u3060\u3055\u3044\u3002docs/architecture.md\uFF09"}`);
         for (const list of Object.values(networkInterfaces())) {
-          for (const a of list ?? []) if (a.family === "IPv4" && !a.internal) console.log(`\u30B9\u30DE\u30DB\u304B\u3089\uFF08\u540C\u4E00Wi-Fi\uFF09: http://${a.address}:${realPort}`);
+          for (const a of list ?? []) if (a.family === "IPv4" && !a.internal) console.log(`\u30B9\u30DE\u30DB\u304B\u3089\uFF08\u540C\u4E00Wi-Fi\uFF09: ${scheme}://${a.address}:${realPort}`);
         }
       }
       ok({ server, repo, url });

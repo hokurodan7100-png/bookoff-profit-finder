@@ -268,3 +268,19 @@ export interface BulkFetchResult {
   listPricesSet: number;
   errors: string[];
 }
+
+export interface AppUser {
+  id: number;
+  username: string;
+  role: import('./constants.ts').Role;
+  createdAt: string;
+  lastLoginAt: string | null;
+}
+
+/** 今の利用者。authMode：accounts＝ユーザー別、password＝共有パスワード（APP_PASSWORD）、none＝認証なし */
+export interface Me {
+  username: string | null;
+  role: import('./constants.ts').Role;
+  authMode: 'accounts' | 'password' | 'none';
+  https: boolean;
+}

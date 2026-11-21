@@ -1,9 +1,9 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { timingSafeEqual, createHash } from 'node:crypto';
 import { extname, join, normalize } from 'node:path';
 import { z } from 'zod';
 import type { Repository } from './repository.ts';
+import { Authenticator, hasRole, hashPassword, requiredRole, type Principal } from './auth.ts';
 import { queryItems, getSettings, summarizeStores, recomputeEstimates, findDuplicates } from './service.ts';
 import { filtersFromParams } from '../shared/filters.ts';
 import { diffStores, exportRowsCsv, importMarket, importProducts, importStores, parseJstDate, TEMPLATES } from './importers.ts';
@@ -14,7 +14,7 @@ import type { AnyProvider } from './providers/types.ts';
 import { NotImplementedError } from './providers/types.ts';
 import { FILTER_STOCK_STATUSES } from '../shared/stock.ts';
 import {
-  BRAND_TYPES, CATEGORIES, CONDITIONS, MARKETPLACES, PREFECTURES, PRICE_TYPES, STOCK_STATUSES, STORE_STATUSES, MARKETPLACE_LABEL, PRICE_TYPE_LABEL,
+  ROLES, ROLE_LABEL, BRAND_TYPES, CATEGORIES, CONDITIONS, MARKETPLACES, PREFECTURES, PRICE_TYPES, STOCK_STATUSES, STORE_STATUSES, MARKETPLACE_LABEL, PRICE_TYPE_LABEL,
 } from '../shared/constants.ts';
 
 const MAX_BODY = 10 * 1024 * 1024;
@@ -107,26 +107,36 @@ const MIME: Record<string, string> = {
   '.svg': 'image/svg+xml', '.json': 'application/json', '.png': 'image/png', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json',
 };
 
-/** APP_PASSWORD を設定したときだけ、全ページにBasic認証をかける（ユーザー名は任意） */
-export function checkPassword(header: string | undefined, password: string): boolean {
-  if (!header?.startsWith('Basic ')) return false;
-  const decoded = Buffer.from(header.slice(6), 'base64').toString('utf8');
-  const given = decoded.slice(decoded.indexOf(':') + 1);
-  const h = (v: string) => createHash('sha256').update(v).digest();
-  return timingSafeEqual(h(given), h(password));
-}
 
-export function createHandler(repo: Repository, publicDir: string, providers: AnyProvider[] = createProviders(), opts: { password?: string } = {}) {
+const usernameSchema = z.string().trim().min(1, 'ユーザー名を入力してください').max(40).regex(/^[^:\s]+$/, 'ユーザー名に空白と「:」は使えません');
+const passwordSchema = z.string().min(8, 'パスワードは8文字以上').max(200);
+const userCreateSchema = z.object({ username: usernameSchema, password: passwordSchema, role: z.enum(ROLES) });
+const userUpdateSchema = z.object({ role: z.enum(ROLES).optional(), password: passwordSchema.optional() });
+
+export interface HandlerOptions { password?: string; https?: boolean }
+
+export function createHandler(repo: Repository, publicDir: string, providers: AnyProvider[] = createProviders(), opts: HandlerOptions = {}) {
   const findProvider = (id: string) => providers.find((p) => p.info.id === id);
+  const auth = new Authenticator(repo, opts.password);
+  const security: Record<string, string> = opts.https ? { 'strict-transport-security': 'max-age=31536000' } : {};
   return async (req: IncomingMessage, res: ServerResponse) => {
     const url = new URL(req.url ?? '/', 'http://localhost');
     const path = url.pathname;
     const method = req.method ?? 'GET';
-    if (opts.password && !checkPassword(req.headers.authorization, opts.password)) {
-      res.writeHead(401, { 'www-authenticate': 'Basic realm="BOOKOFF profit finder", charset="UTF-8"', 'content-type': 'text/plain; charset=utf-8' });
-      return res.end('パスワードが必要です');
+    for (const [k, v] of Object.entries(security)) res.setHeader(k, v);
+    const a = auth.authenticate(req.headers.authorization, req.socket.remoteAddress ?? '');
+    if (!a.ok) {
+      const headers: Record<string, string> = { 'content-type': 'text/plain; charset=utf-8' };
+      if (a.status === 401) headers['www-authenticate'] = 'Basic realm="BOOKOFF profit finder", charset="UTF-8"';
+      res.writeHead(a.status, headers);
+      return res.end(a.message);
     }
+    const me: Principal = a.principal;
     try {
+      if (path.startsWith('/api/')) {
+        const need = requiredRole(method, path);
+        if (!hasRole(me.role, need)) throw new HttpError(403, `この操作には「${ROLE_LABEL[need]}」以上の権限が必要です（あなたは${ROLE_LABEL[me.role]}）`);
+      }
       if (!path.startsWith('/api/')) return await serveStatic(res, publicDir, path);
 
       if (method === 'GET' && path === '/api/meta') {
@@ -137,6 +147,40 @@ export function createHandler(repo: Repository, publicDir: string, providers: An
           counts: { stores: repo.countStores(), demo: repo.countDemo(), real: repo.countReal() },
           storeSeed: { source: STORE_SEED_SOURCE, verifiedAt: STORE_SEED_VERIFIED_AT },
         });
+      }
+      if (method === 'GET' && path === '/api/me') {
+        return send(res, 200, { username: me.username, role: me.role, authMode: auth.mode(), https: !!opts.https });
+      }
+      if (path === '/api/users') {
+        if (method === 'GET') return send(res, 200, { users: repo.listUsers(), authMode: auth.mode() });
+        if (method === 'POST') {
+          const b = parse(userCreateSchema, await readBody(req));
+          if (repo.countUsers() === 0 && b.role !== 'admin') throw new HttpError(400, '最初のユーザーは管理者にしてください');
+          if (repo.findUserForLogin(b.username)) throw new HttpError(409, 'そのユーザー名は使われています');
+          const u = repo.insertUser({ username: b.username, passwordHash: hashPassword(b.password), role: b.role });
+          auth.invalidate();
+          return send(res, 201, u);
+        }
+      }
+      const um = path.match(/^\/api\/users\/(\d+)$/);
+      if (um) {
+        const id = Number(um[1]);
+        const target = repo.getUser(id);
+        if (!target) throw new HttpError(404, 'ユーザーが見つかりません');
+        const lastAdmin = target.role === 'admin' && repo.countAdmins() <= 1;
+        if (method === 'PUT') {
+          const b = parse(userUpdateSchema, await readBody(req));
+          if (lastAdmin && b.role && b.role !== 'admin') throw new HttpError(400, '管理者が1人もいなくなるため変更できません');
+          const u = repo.updateUser(id, { role: b.role, passwordHash: b.password ? hashPassword(b.password) : undefined });
+          auth.invalidate();
+          return send(res, 200, u);
+        }
+        if (method === 'DELETE') {
+          if (lastAdmin && repo.countUsers() > 1) throw new HttpError(400, '管理者が1人もいなくなるため削除できません（先に別の管理者を作ってください）');
+          repo.deleteUser(id);
+          auth.invalidate();
+          return send(res, 200, { deleted: true, authMode: auth.mode() });
+        }
       }
       if (method === 'GET' && path === '/api/items') {
         const f = filtersFromParams(url.searchParams);

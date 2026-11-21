@@ -377,3 +377,51 @@ describe('スマートフォン', () => {
     });
   }
 });
+
+describe('ユーザー別ログイン', () => {
+  it('設定画面で最初の管理者と閲覧者を作り、閲覧者には閲覧のみの表示が出る', async () => {
+    const own = await startServer({ port: 0, host: '127.0.0.1', dbPath: ':memory:', publicDir: 'dist/public', demo: true, quiet: true });
+    try {
+      const page = await browser.newPage({ viewport: { width: 1366, height: 900 } });
+      const errors: string[] = [];
+      page.on('pageerror', (e) => errors.push(e.message));
+      page.on('dialog', (d) => d.accept());
+      await page.goto(own.url + '/#/settings');
+      await page.getByTestId('auth-mode').waitFor();
+      assert.match(await page.getByTestId('auth-mode').innerText(), /ログインなし/);
+      await page.fill('#user-form [name=username]', 'boss');
+      await page.fill('#user-form [name=password]', 'password1');
+      await page.click('#user-form button');
+      await page.waitForTimeout(300);
+      assert.equal((await fetch(own.url + '/api/meta')).status, 401, '作った直後からログインが必要');
+      await page.close();
+
+      const adminCtx = await browser.newContext({ viewport: { width: 1366, height: 900 }, httpCredentials: { username: 'boss', password: 'password1' } });
+      const admin = await adminCtx.newPage();
+      admin.on('pageerror', (e) => errors.push(e.message));
+      await admin.goto(own.url + '/#/settings');
+      await admin.getByTestId('users-table').waitFor();
+      assert.match(await admin.getByTestId('whoami').innerText(), /boss\s*管理者/);
+      await admin.fill('#user-form [name=username]', 'mika');
+      await admin.fill('#user-form [name=password]', 'password2');
+      await admin.selectOption('#user-form [name=role]', 'viewer');
+      await admin.click('#user-form button');
+      await admin.waitForFunction(() => document.querySelectorAll('[data-testid=user-row]').length === 2);
+      await admin.screenshot({ path: join(SHOTS, 'pc-users.png'), fullPage: true });
+      await adminCtx.close();
+
+      const viewerCtx = await browser.newContext({ viewport: { width: 390, height: 844 }, httpCredentials: { username: 'mika', password: 'password2' } });
+      const viewer = await viewerCtx.newPage();
+      viewer.on('pageerror', (e) => errors.push(e.message));
+      await viewer.goto(own.url + '/');
+      await viewer.getByTestId('viewer-banner').waitFor();
+      await viewer.goto(own.url + '/#/settings');
+      await viewer.locator('#settings-form').waitFor();
+      assert.equal(await viewer.locator('#users').count(), 0, '閲覧者にはユーザー管理を出さない');
+      assert.match(await viewer.locator('#settings-form').innerText(), /管理者だけ/);
+      await viewer.screenshot({ path: join(SHOTS, 'mobile-viewer-settings.png') });
+      await viewerCtx.close();
+      assert.deepEqual(errors, []);
+    } finally { own.server.close(); }
+  });
+});

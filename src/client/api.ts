@@ -1,4 +1,4 @@
-import type { BulkFetchResult, DuplicateGroup, EstimateResult, StoreDiff, StoreSummary, ImportResult, ItemRow, MarketPrice, Product, ProviderInfo, Settings, StockOffer, Store, StoreEvent } from '../shared/types.ts';
+import type { AppUser, Me, BulkFetchResult, DuplicateGroup, EstimateResult, StoreDiff, StoreSummary, ImportResult, ItemRow, MarketPrice, Product, ProviderInfo, Settings, StockOffer, Store, StoreEvent } from '../shared/types.ts';
 
 export interface Meta {
   prefectures: string[]; brandTypes: string[]; categories: string[]; stockStatuses: string[]; filterStockStatuses: string[]; storeStatuses: string[];
@@ -21,6 +21,11 @@ async function req<T>(method: string, url: string, body?: unknown): Promise<T> {
 
 export const api = {
   meta: () => req<Meta>('GET', '/api/meta'),
+  me: () => req<Me>('GET', '/api/me'),
+  users: () => req<{ users: AppUser[]; authMode: Me['authMode'] }>('GET', '/api/users'),
+  createUser: (b: { username: string; password: string; role: string }) => req<AppUser>('POST', '/api/users', b),
+  updateUser: (id: number, b: { role?: string; password?: string }) => req<AppUser>('PUT', `/api/users/${id}`, b),
+  deleteUser: (id: number) => req<{ deleted: boolean; authMode: Me['authMode'] }>('DELETE', `/api/users/${id}`),
   items: (params: URLSearchParams) => req<{ total: number; matched: number; offset: number; rows: ItemRow[]; settings: Settings }>('GET', `/api/items?${params}`),
   product: (id: number) => req<{ product: Product; offers: (StockOffer & { store: Store | null })[]; prices: MarketPrice[] }>('GET', `/api/products/${id}`),
   createProduct: (b: unknown) => req<Product>('POST', '/api/products', b),

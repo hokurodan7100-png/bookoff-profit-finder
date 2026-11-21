@@ -78,6 +78,15 @@ CREATE TABLE IF NOT EXISTS market_prices (
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_market_product ON market_prices(product_id);
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  role TEXT NOT NULL CHECK (role IN ('admin','editor','viewer')),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  last_login_at TEXT
+);
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value_json TEXT NOT NULL,
@@ -95,7 +104,7 @@ export function openDb(path: string): DatabaseSync {
   return db;
 }
 
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 /** 既存DBの移行。PRAGMA user_version で版を管理する。 */
 export function migrate(db: DatabaseSync) {
@@ -118,6 +127,7 @@ export function migrate(db: DatabaseSync) {
   const cols = (db.prepare('PRAGMA table_info(products)').all() as { name: string }[]).map((c) => c.name);
   if (!cols.includes('list_price')) db.exec('ALTER TABLE products ADD COLUMN list_price INTEGER;');
   if (!cols.includes('list_price_source')) db.exec('ALTER TABLE products ADD COLUMN list_price_source TEXT;');
+  // v4: users 表（SCHEMA_V1 の IF NOT EXISTS で作成済み）
   db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
 }
 
