@@ -1,0 +1,30 @@
+{
+  "name": "bookoff-profit-finder",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "BOOKOFF（静岡・山梨・神奈川）仕入れ価格とメルカリ／Yahoo!フリマ相場を比較する利益商品検索ツール",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "start": "node --env-file-if-exists=config.env --disable-warning=ExperimentalWarning dist/main.mjs",
+    "dev": "node scripts/build.mjs && node --disable-warning=ExperimentalWarning --import tsx src/server/main.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "node --disable-warning=ExperimentalWarning --import tsx --test tests/unit/*.test.ts",
+    "test:e2e": "node scripts/build.mjs && node --disable-warning=ExperimentalWarning --import tsx --test --test-concurrency=1 tests/e2e/*.test.ts",
+    "check": "npm run typecheck && npm test && npm run test:e2e"
+  },
+  "dependencies": {
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "esbuild": "^0.28.0",
+    "playwright": "^1.56.0",
+    "tailwindcss": "^4.1.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  }
+}

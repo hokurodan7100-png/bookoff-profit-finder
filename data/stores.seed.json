@@ -1,0 +1,929 @@
+{
+ "verifiedAt": "2026-11-20T08:10:00+09:00",
+ "source": "BOOKOFF公式「お店を探す」都道府県別一覧（静岡県・山梨県・神奈川県）",
+ "expectedCounts": {
+  "静岡県": 26,
+  "山梨県": 6,
+  "神奈川県": 70
+ },
+ "stores": [
+  {
+   "officialId": "shop10259",
+   "name": "BOOKOFF 静岡馬渕店",
+   "brandType": "BOOKOFF",
+   "prefecture": "静岡県",
+   "address": "静岡県静岡市駿河区馬渕3-4-6",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10259.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/22.html"
+  },
+  {
+   "officialId": "shop10469",
+   "name": "BOOKOFF 静岡流通通り店",
+   "brandType": "BOOKOFF",
+   "prefecture": "静岡県",
+   "address": "静岡県静岡市葵区東千代田1-7-16",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10469.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/22.html"
+  },
+  {
+   "officialId": "shop10251",
+   "name": "BOOKOFF 清水岡町店",
+   "brandType": "BOOKOFF",
+   "prefecture": "静岡県",
+   "address": "静岡県静岡市清水区岡町6-1",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10251.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/22.html"
+  },
+  {
+   "officialId": "shop10845",
+   "name": "BOOKOFF 浜松北寺島店",
+   "brandType": "BOOKOFF",
+   "prefecture": "静岡県",
+   "address": "静岡県浜松市中央区北寺島町492-2 バロー北寺島店２F",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10845.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/22.html"
+  },
+  {
+   "officialId": "shop10041",
+   "name": "BOOKOFF 浜松高林店",
+   "brandType": "BOOKOFF",
+   "prefecture": "静岡県",
+   "address": "静岡県浜松市中央区高林5-6-15",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10041.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/22.html"
+  },
+  {
+   "officialId": "shop10656",
+   "name": "BOOKOFF 浜松富塚店",
+   "brandType": "BOOKOFF",
+   "prefecture": "静岡県",
+   "address": "静岡県浜松市中央区富塚町1710-1",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10656.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/22.html"
+  },
+  {
+   "officialId": "shop10746",
+   "name": "BOOKOFF 浜松原島店",
+   "brandType": "BOOKOFF",
+   "prefecture": "静岡県",
+   "address": "静岡県浜松市中央区原島町305",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10746.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/22.html"
+  },
+  {
+   "officialId": "shop10289",
+   "name": "BOOKOFF 浜松芳川店",
+   "brandType": "BOOKOFF",
+   "prefecture": "静岡県",
+   "address": "静岡県浜松市中央区都盛町85-1",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10289.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/22.html"
+  },
+  {
+   "officialId": "shop10321",
+   "name": "BOOKOFF 浜松初生店",
+   "brandType": "BOOKOFF",
+   "prefecture": "静岡県",
+   "address": "静岡県浜松市中央区初生町590-6",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10321.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/22.html"
+  },
+  {
+   "officialId": "shop10226",
+   "name": "BOOKOFF PLUS 浜北店",
+   "brandType": "BOOKOFF PLUS",
+   "prefecture": "静岡県",
+   "address": "静岡県浜松市浜名区本沢合805",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10226.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/22.html"
+  },
+  {
+   "officialId": "shop10219",
+   "name": "BOOKOFF 沼津リコー通り店",
+   "brandType": "BOOKOFF",
+   "prefecture": "静岡県",
+   "address": "静岡県沼津市寿町23-33",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10219.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/22.html"
+  },
+  {
+   "officialId": "shop10307",
+   "name": "BOOKOFF 三島徳倉店",
+   "brandType": "BOOKOFF",
+   "prefecture": "静岡県",
+   "address": "静岡県三島市徳倉4-36-3",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10307.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/22.html"
+  },
+  {
+   "officialId": "shop10145",
+   "name": "BOOKOFF 富士宮北町店",
+   "brandType": "BOOKOFF",
+   "prefecture": "静岡県",
+   "address": "静岡県富士宮市北町21-8",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10145.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/22.html"
+  },
+  {
+   "officialId": "shop10489",
+   "name": "BOOKOFF 静岡島田店",
+   "brandType": "BOOKOFF",
+   "prefecture": "静岡県",
+   "address": "静岡県島田市中河町8968-5",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10489.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/22.html"
+  },
+  {
+   "officialId": "shop10271",
+   "name": "BOOKOFF 富士本吉原店",
+   "brandType": "BOOKOFF",
+   "prefecture": "静岡県",
+   "address": "静岡県富士市今泉1-17-41",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10271.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/22.html"
+  },
+  {
+   "officialId": "shop10546",
+   "name": "BOOKOFF PLUS 富士中島店",
+   "brandType": "BOOKOFF PLUS",
+   "prefecture": "静岡県",
+   "address": "静岡県富士市中島417-1",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10546.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/22.html"
+  },
+  {
+   "officialId": "shop10608",
+   "name": "BOOKOFF 磐田今之浦店",
+   "brandType": "BOOKOFF",
+   "prefecture": "静岡県",
+   "address": "静岡県磐田市今之浦4-21-10",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10608.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/22.html"
+  },
+  {
+   "officialId": "shop10191",
+   "name": "BOOKOFF 掛川店",
+   "brandType": "BOOKOFF",
+   "prefecture": "静岡県",
+   "address": "静岡県掛川市大池2999-1",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10191.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/22.html"
+  },
+  {
+   "officialId": "shop10050",
+   "name": "BOOKOFF 藤枝店",
+   "brandType": "BOOKOFF",
+   "prefecture": "静岡県",
+   "address": "静岡県藤枝市小石川町3-18-30",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10050.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/22.html"
+  },
+  {
+   "officialId": "shop10222",
+   "name": "BOOKOFF 御殿場店",
+   "brandType": "BOOKOFF",
+   "prefecture": "静岡県",
+   "address": "静岡県御殿場市東田中2-2-1",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10222.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/22.html"
+  },
+  {
+   "officialId": "shop10158",
+   "name": "BOOKOFF 袋井店",
+   "brandType": "BOOKOFF",
+   "prefecture": "静岡県",
+   "address": "静岡県袋井市川井1014-4",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10158.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/22.html"
+  },
+  {
+   "officialId": "shop10611",
+   "name": "BOOKOFF 湖西店",
+   "brandType": "BOOKOFF",
+   "prefecture": "静岡県",
+   "address": "静岡県湖西市新居町中之郷2296-8",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10611.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/22.html"
+  },
+  {
+   "officialId": "shop10696",
+   "name": "BOOKOFF 伊豆の国大仁店",
+   "brandType": "BOOKOFF",
+   "prefecture": "静岡県",
+   "address": "静岡県伊豆の国市吉田395",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10696.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/22.html"
+  },
+  {
+   "officialId": "shop20237",
+   "name": "BOOKOFF 静岡榛原店",
+   "brandType": "BOOKOFF",
+   "prefecture": "静岡県",
+   "address": "静岡県牧之原市細江2081",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20237.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/22.html"
+  },
+  {
+   "officialId": "shop10074",
+   "name": "BOOKOFF 函南店",
+   "brandType": "BOOKOFF",
+   "prefecture": "静岡県",
+   "address": "静岡県田方郡函南町塚本135-1",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10074.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/22.html"
+  },
+  {
+   "officialId": "shop10527",
+   "name": "BOOKOFF 静岡長泉店",
+   "brandType": "BOOKOFF",
+   "prefecture": "静岡県",
+   "address": "静岡県駿東郡長泉町竹原370-1",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10527.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/22.html"
+  },
+  {
+   "officialId": "shop20545",
+   "name": "BOOKOFF SUPER BAZAAR 甲府貢川店",
+   "brandType": "BOOKOFF SUPER BAZAAR",
+   "prefecture": "山梨県",
+   "address": "山梨県甲府市富竹1丁目10-33",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20545.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/19.html"
+  },
+  {
+   "officialId": "shop83010",
+   "name": "B・STYLE 甲府向町店",
+   "brandType": "B・STYLE",
+   "prefecture": "山梨県",
+   "address": "山梨県甲府市向町727",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop83010.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/19.html"
+  },
+  {
+   "officialId": "shop20290",
+   "name": "BOOKOFF 富士吉田店",
+   "brandType": "BOOKOFF",
+   "prefecture": "山梨県",
+   "address": "山梨県富士吉田市新西原5-1-8",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20290.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/19.html"
+  },
+  {
+   "officialId": "shop20340",
+   "name": "BOOKOFF 山梨双葉響ヶ丘店",
+   "brandType": "BOOKOFF",
+   "prefecture": "山梨県",
+   "address": "山梨県甲斐市龍地3296-3",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20340.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/19.html"
+  },
+  {
+   "officialId": "shop20316",
+   "name": "BOOKOFF 20号山梨石和広瀬店",
+   "brandType": "BOOKOFF",
+   "prefecture": "山梨県",
+   "address": "山梨県笛吹市石和町広瀬1374-147",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20316.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/19.html"
+  },
+  {
+   "officialId": "shop20497",
+   "name": "BOOKOFF PLUS 田富昭和通り店",
+   "brandType": "BOOKOFF PLUS",
+   "prefecture": "山梨県",
+   "address": "山梨県中央市山之神3356-1",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20497.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/19.html"
+  },
+  {
+   "officialId": "shop20450",
+   "name": "BOOKOFF 鶴見駅西口店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県横浜市鶴見区豊岡町15-29",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20450.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20404",
+   "name": "BOOKOFF アクロスプラザ東神奈川店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県横浜市神奈川区西寺尾1-16-15",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20404.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20434",
+   "name": "BOOKOFF 横浜ビブレ店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県横浜市西区南幸2-15-13 横浜ビブレ8F",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20434.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop80211",
+   "name": "あそビバ 横浜ビブレ店",
+   "brandType": "あそビバ",
+   "prefecture": "神奈川県",
+   "address": "神奈川県横浜市西区南幸2-15-13 横浜ビブレ8階・9階",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop80211.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20279",
+   "name": "BOOKOFF PLUS 横浜伊勢佐木モール店",
+   "brandType": "BOOKOFF PLUS",
+   "prefecture": "神奈川県",
+   "address": "神奈川県横浜市中区伊勢佐木町1-7-7",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20279.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20527",
+   "name": "BOOKOFF イオン本牧店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県横浜市中区本牧原7-1 イオン本牧 5F",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20527.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop10617",
+   "name": "BOOKOFF 横浜朝比奈店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県横浜市金沢区東朝比奈3-24",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10617.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20467",
+   "name": "BOOKOFF SUPER BAZAAR 綱島樽町店",
+   "brandType": "BOOKOFF SUPER BAZAAR",
+   "prefecture": "神奈川県",
+   "address": "神奈川県横浜市港北区樽町3-12-25",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20467.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop83045",
+   "name": "BOOKOFF SUPER BAZAAR 綱島樽町店（本・トレカ館）",
+   "brandType": "BOOKOFF SUPER BAZAAR",
+   "prefecture": "神奈川県",
+   "address": "神奈川県横浜市港北区樽町3-12-26",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop83045.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20313",
+   "name": "BOOKOFF 港北綱島西店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県横浜市港北区綱島西2-12-8",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20313.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20379",
+   "name": "BOOKOFF SUPER BAZAAR 横浜東戸塚オリンピック店",
+   "brandType": "BOOKOFF SUPER BAZAAR",
+   "prefecture": "神奈川県",
+   "address": "神奈川県横浜市戸塚区川上町52-1",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20379.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop41110",
+   "name": "aidect 港南台バーズ店",
+   "brandType": "aidect",
+   "prefecture": "神奈川県",
+   "address": "神奈川県横浜市港南区港南台3-1-3 港南台バーズ 3F",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop41110.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop10413",
+   "name": "BOOKOFF 横浜港南丸山台店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県横浜市港南区丸山台4-3-1",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10413.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop10612",
+   "name": "BOOKOFF 横浜鶴ヶ峰店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県横浜市旭区鶴ケ峰本町1-27-13",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10612.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop10727",
+   "name": "BOOKOFF 横浜中山店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県横浜市緑区台村町370-1",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10727.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop10335",
+   "name": "BOOKOFF 横浜十日市場店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県横浜市緑区十日市場町882-1",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10335.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20241",
+   "name": "BOOKOFF 横浜鴨居店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県横浜市緑区東本郷6-1-26",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20241.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20270",
+   "name": "BOOKOFF SUPER BAZAAR 横浜瀬谷南台店",
+   "brandType": "BOOKOFF SUPER BAZAAR",
+   "prefecture": "神奈川県",
+   "address": "神奈川県横浜市瀬谷区南台1-45-2",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20270.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop83018",
+   "name": "BOOKOFF SUPER BAZAAR 横浜瀬谷南台店（ホビー・トレカ館）",
+   "brandType": "BOOKOFF SUPER BAZAAR",
+   "prefecture": "神奈川県",
+   "address": "神奈川県横浜市瀬谷区南台1-45-3",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop83018.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop10744",
+   "name": "BOOKOFF 横浜本郷台店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県横浜市栄区飯島町1434",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10744.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20079",
+   "name": "BOOKOFF 横浜あざみ野店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県横浜市青葉区あざみ野1-4-3",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20079.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop41108",
+   "name": "aidect ららぽーと横浜店",
+   "brandType": "aidect",
+   "prefecture": "神奈川県",
+   "address": "神奈川県横浜市都筑区池辺町4035-1 ららぽーと横浜 2F",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop41108.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20509",
+   "name": "BOOKOFF SUPER BAZAAR ノースポート･モール店",
+   "brandType": "BOOKOFF SUPER BAZAAR",
+   "prefecture": "神奈川県",
+   "address": "神奈川県横浜市都筑区中川中央1-25-1 ノースポート･モール1F",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20509.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20120",
+   "name": "BOOKOFF SUPER BAZAAR 川崎モアーズ店",
+   "brandType": "BOOKOFF SUPER BAZAAR",
+   "prefecture": "神奈川県",
+   "address": "神奈川県川崎市川崎区駅前本町7 岡田屋モアーズ3･6F",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20120.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20431",
+   "name": "BOOKOFF SUPER BAZAAR 409号川崎港町店",
+   "brandType": "BOOKOFF SUPER BAZAAR",
+   "prefecture": "神奈川県",
+   "address": "神奈川県川崎市川崎区港町12-1",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20431.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20240",
+   "name": "BOOKOFF SUPER BAZAAR 国道1号多摩川大橋店",
+   "brandType": "BOOKOFF SUPER BAZAAR",
+   "prefecture": "神奈川県",
+   "address": "神奈川県川崎市幸区小向町5-1",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20240.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop10284",
+   "name": "BOOKOFF 武蔵中原店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県川崎市中原区上小田中6-12-1",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10284.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop80106",
+   "name": "Rehello by BOOKOFF 元住吉ブレーメン通り店",
+   "brandType": "Rehello by BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県川崎市中原区木月1-27-12",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop80106.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20160",
+   "name": "BOOKOFF 武蔵新城店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県川崎市中原区新城1-14-1",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20160.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20122",
+   "name": "BOOKOFF 246川崎梶ヶ谷店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県川崎市高津区下作延3-7-7",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20122.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20542",
+   "name": "BOOKOFF イトーヨーカドー溝ノ口店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県川崎市高津区久本3丁目6-20",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20542.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop10586",
+   "name": "BOOKOFF JR稲田堤駅前店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県川崎市多摩区菅稲田堤1-3-4",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10586.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop10411",
+   "name": "BOOKOFF 川崎長沢店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県川崎市多摩区長沢4-29-5",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10411.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20419",
+   "name": "BOOKOFF 向ヶ丘遊園駅前店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県川崎市多摩区登戸2102-1",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20419.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20238",
+   "name": "BOOKOFF PLUS 東名川崎インター店",
+   "brandType": "BOOKOFF PLUS",
+   "prefecture": "神奈川県",
+   "address": "神奈川県川崎市宮前区土橋6-1-1",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20238.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20134",
+   "name": "BOOKOFF 川崎東有馬店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県川崎市宮前区東有馬3-23-15",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20134.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20432",
+   "name": "BOOKOFF 新百合丘オーパ店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県川崎市麻生区上麻生1-1-1 新百合丘オーパ 4F",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20432.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20538",
+   "name": "BOOKOFF イオン橋本店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県相模原市緑区橋本6-2-1 イオン橋本 4F",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20538.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20166",
+   "name": "BOOKOFF PLUS 16号相模原富士見店",
+   "brandType": "BOOKOFF PLUS",
+   "prefecture": "神奈川県",
+   "address": "神奈川県相模原市中央区富士見3-15-1",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20166.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20163",
+   "name": "BOOKOFF PLUS 16号相模原上鶴間店",
+   "brandType": "BOOKOFF PLUS",
+   "prefecture": "神奈川県",
+   "address": "神奈川県相模原市南区上鶴間2-5-2",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20163.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20042",
+   "name": "BOOKOFF PLUS 古淵駅前店（本・ソフト館）",
+   "brandType": "BOOKOFF PLUS",
+   "prefecture": "神奈川県",
+   "address": "神奈川県相模原市南区古淵2-19-14",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20042.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop82033",
+   "name": "BOOKOFF PLUS 古淵駅前店（アパレル・家電館）",
+   "brandType": "BOOKOFF PLUS",
+   "prefecture": "神奈川県",
+   "address": "神奈川県相模原市南区古淵2-17-15 2F・3F",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop82033.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop10540",
+   "name": "BOOKOFF 相模大野店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県相模原市南区相模大野5-30-7",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10540.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop10771",
+   "name": "BOOKOFF 横須賀中央店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県横須賀市大滝町2-25",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10771.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop10844",
+   "name": "BOOKOFF 横須賀佐原店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県横須賀市粟田2-1-3",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10844.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop10613",
+   "name": "BOOKOFF 横須賀堀ノ内店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県横須賀市三春町3-13-7",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10613.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop10392",
+   "name": "BOOKOFF 平塚駅西口店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県平塚市紅谷町16-4",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10392.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop80213",
+   "name": "あそビバ 平塚四之宮店",
+   "brandType": "あそビバ",
+   "prefecture": "神奈川県",
+   "address": "神奈川県平塚市四之宮3-9-1",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop80213.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20278",
+   "name": "BOOKOFF 平塚豊田店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県平塚市豊田本郷1731",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20278.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20421",
+   "name": "BOOKOFF SUPER BAZAAR 鎌倉大船店",
+   "brandType": "BOOKOFF SUPER BAZAAR",
+   "prefecture": "神奈川県",
+   "address": "神奈川県鎌倉市大船6-1-1",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20421.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop10731",
+   "name": "BOOKOFF 鎌倉手広店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県鎌倉市手広6-2-14",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10731.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20281",
+   "name": "BOOKOFF PLUS 藤沢大庭店",
+   "brandType": "BOOKOFF PLUS",
+   "prefecture": "神奈川県",
+   "address": "神奈川県藤沢市大庭5454-5",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20281.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop10481",
+   "name": "BOOKOFF 藤沢六会店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県藤沢市亀井野2-25-11",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10481.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20470",
+   "name": "BOOKOFF SUPER BAZAAR Luz湘南辻堂店",
+   "brandType": "BOOKOFF SUPER BAZAAR",
+   "prefecture": "神奈川県",
+   "address": "神奈川県藤沢市辻堂神台1-2-12 Luz湘南辻堂3F",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20470.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20105",
+   "name": "BOOKOFF 藤沢用田店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県藤沢市用田491-1",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20105.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop10535",
+   "name": "BOOKOFF 小田原蛍田店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県小田原市飯田岡39",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10535.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20205",
+   "name": "BOOKOFF 茅ヶ崎駅北口店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県茅ヶ崎市新栄町2-8 共和ビル",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20205.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop10807",
+   "name": "BOOKOFF 逗子久木店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県逗子市久木4-13-25",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10807.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop10265",
+   "name": "BOOKOFF 秦野渋沢店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県秦野市平沢363-3",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10265.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop10063",
+   "name": "BOOKOFF 厚木妻田店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県厚木市妻田北1-12-21",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10063.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop10848",
+   "name": "BOOKOFF 厚木戸室店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県厚木市戸室1-28-17",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10848.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20480",
+   "name": "BOOKOFF PLUS アミューあつぎ店",
+   "brandType": "BOOKOFF PLUS",
+   "prefecture": "神奈川県",
+   "address": "神奈川県厚木市中町2-12-15 アミューあつぎ4F",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20480.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop40405",
+   "name": "Japan TCG Center 本厚木駅前店",
+   "brandType": "Japan TCG Center",
+   "prefecture": "神奈川県",
+   "address": "神奈川県厚木市中町2-2-8 厚木センタービル6F",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop40405.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20128",
+   "name": "BOOKOFF 大和つきみ野店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県大和市つきみ野4-12-3",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20128.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20179",
+   "name": "BOOKOFF 大和西鶴間店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県大和市西鶴間1-17-2",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20179.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20020",
+   "name": "BOOKOFF PLUS 伊勢原店",
+   "brandType": "BOOKOFF PLUS",
+   "prefecture": "神奈川県",
+   "address": "神奈川県伊勢原市伊勢原3-5-1",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20020.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20203",
+   "name": "BOOKOFF 海老名さがみ野駅前店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県海老名市東柏ケ谷2-25-25",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20203.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20298",
+   "name": "BOOKOFF 座間警察署前店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県座間市入谷西2丁目60-11",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20298.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop20418",
+   "name": "BOOKOFF 寒川大曲店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県高座郡寒川町大曲3-11-5",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop20418.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  },
+  {
+   "officialId": "shop10750",
+   "name": "BOOKOFF 大井松田店",
+   "brandType": "BOOKOFF",
+   "prefecture": "神奈川県",
+   "address": "神奈川県足柄上郡大井町金子312",
+   "officialUrl": "https://www.bookoff.co.jp/shop/shop10750.html",
+   "sourceUrl": "https://www.bookoff.co.jp/shop/pref-list/14.html"
+  }
+ ]
+}

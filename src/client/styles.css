@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic UI", Meiryo, system-ui, sans-serif;
+}
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body { @apply bg-slate-100 text-slate-800 antialiased; }
+  dialog[open] { animation: pop .12s ease-out; }
+  @keyframes pop { from { transform: translateY(6px); opacity: .6 } to { transform: none; opacity: 1 } }
+}
+
+@layer components {
+  .lbl { @apply mb-1 block text-xs font-medium text-slate-600; }
+  .inp { @apply w-full rounded-md border border-slate-300 bg-white px-2.5 py-2 text-base sm:text-sm shadow-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-200; }
+  .btn-primary { @apply inline-flex items-center justify-center rounded-md bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-amber-500; }
+  .btn-secondary { @apply inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-amber-500; }
+  .btn-danger { @apply inline-flex items-center justify-center rounded-md border border-red-300 bg-white px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50; }
+}
