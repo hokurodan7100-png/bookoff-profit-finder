@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { Repository } from './repository.ts';
-import type { ImportResult, ItemRow } from '../shared/types.ts';
+import type { ImportResult, ItemRow, StoreDiff } from '../shared/types.ts';
 import { parseCsvRecords, toCsv, type CsvRecord } from '../shared/csv.ts';
 import {
   CATEGORIES, FORBIDDEN_MARKETPLACE_WORDS, MARKETPLACE_LABEL, MARKETPLACES, NA, PREFECTURES, PRICE_TYPE_LABEL,
@@ -203,10 +203,43 @@ export function importMarket(repo: Repository, text: string, filename: string): 
 }
 
 /** 店舗マスタCSV（3県以外は拒否） */
+class Rollback extends Error {}
+
+/**
+ * 店舗マスタCSVを保存せずに照合し、追加・変更される店舗と、CSVに無い営業中の店舗（閉店・改称の候補）を返す。
+ * 公式の店舗一覧と定期的に見比べる運用（docs/data-sources.md）で使う。
+ */
+export function diffStores(repo: Repository, text: string, filename: string): StoreDiff {
+  const changes: StoreDiff['changes'] = [];
+  const seen = new Set<number>();
+  let result!: ImportResult;
+  try {
+    repo.tx(() => {
+      result = importStoresInner(repo, text, filename, (line, action, storeId, officialId, name) => {
+        seen.add(storeId);
+        if (action === 'unchanged') return;
+        const ev = repo.listStoreEvents(storeId)[0];
+        changes.push({ line, officialId, name, action, before: action === 'updated' ? ev?.before ?? null : null, after: ev?.after ?? null });
+      });
+      throw new Rollback();
+    });
+  } catch (e) { if (!(e instanceof Rollback)) throw e; }
+  const missing = repo.listStores().filter((s) => s.status === '営業中' && !seen.has(s.id))
+    .map((s) => ({ id: s.id, officialId: s.officialId, name: s.name, prefecture: s.prefecture }));
+  return { result, changes, missing };
+}
+
 export function importStores(repo: Repository, text: string, filename: string): ImportResult {
+  let res!: ImportResult;
+  repo.tx(() => { res = importStoresInner(repo, text, filename); });
+  return res;
+}
+
+function importStoresInner(repo: Repository, text: string, filename: string,
+  onRow?: (line: number, action: 'inserted' | 'updated' | 'unchanged', storeId: number, officialId: string | null, name: string) => void): ImportResult {
   const { records } = parseCsvRecords(text);
   const res = emptyResult('stores', records.length);
-  repo.tx(() => {
+  {
     for (const rec of records) {
       const c = canon(rec);
       c.name = c.storeName ?? c.name;
@@ -224,12 +257,13 @@ export function importStores(repo: Repository, text: string, filename: string): 
       if (c.verifiedAt && !verifiedAt) { fail('確認日時を解釈できません'); continue; }
       const officialId = c.storeId ? (c.storeId.startsWith('shop') ? c.storeId : `shop${c.storeId}`) : null;
       const successorOfficialId = c.successorId ? (c.successorId.startsWith('shop') ? c.successorId : `shop${c.successorId}`) : null;
-      const { action } = repo.upsertStore({ officialId, name: c.name, brandType, prefecture: c.prefecture as Prefecture, address: c.address,
+      const { action, store } = repo.upsertStore({ officialId, name: c.name, brandType, prefecture: c.prefecture as Prefecture, address: c.address,
         officialUrl: c.officialUrl ?? (officialId ? `https://www.bookoff.co.jp/shop/${officialId}.html` : null), status, successorOfficialId,
         verifiedAt, source: `CSV取込（${filename}）`, note: c.note ?? BRAND_NOTES[brandType] ?? null });
       if (action === 'inserted') res.inserted++; else if (action === 'updated') res.updated++; else res.skipped++;
+      onRow?.(rec.line, action, store.id, officialId, c.name);
     }
-  });
+  }
   return res;
 }
 

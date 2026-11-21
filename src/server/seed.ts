@@ -31,6 +31,7 @@ export const DEFAULT_SETTINGS: Settings = {
   priceTypePriority: ['estimate', 'sold', 'listing'],
   rounding: 'floor',
   stockFreshDays: 3,
+  estimateDays: 30,
 };
 
 export const STORE_SEED_SOURCE = storeSeed.source;

@@ -99,6 +99,11 @@ export interface PriceInput {
 export class Repository {
   constructor(readonly db: DatabaseSync) {}
 
+  /** この接続で行われた変更（追加・更新・削除）の累計。一覧のキャッシュ無効化に使う */
+  changeCount(): number {
+    return Number((this.db.prepare('SELECT total_changes() c').get() as Row).c);
+  }
+
   tx<T>(fn: () => T): T {
     this.db.exec('BEGIN');
     try { const r = fn(); this.db.exec('COMMIT'); return r; }
@@ -290,6 +295,10 @@ export class Repository {
   listPricesForProduct(productId: number): MarketPrice[] {
     return (this.db.prepare('SELECT * FROM market_prices WHERE product_id = ? ORDER BY observed_at DESC, id DESC').all(productId) as Row[]).map(toPrice);
   }
+  getPrice(id: number): MarketPrice | null {
+    const r = this.db.prepare('SELECT * FROM market_prices WHERE id = ?').get(id) as Row | undefined;
+    return r ? toPrice(r) : null;
+  }
   insertPrice(p: PriceInput): { price: MarketPrice; duplicate: boolean } {
     const dup = this.db.prepare(`SELECT * FROM market_prices WHERE product_id=? AND marketplace=? AND price_type=? AND price=? AND observed_at=? AND is_demo=?`)
       .get(p.productId, p.marketplace, p.priceType, p.price, p.observedAt, p.isDemo ? 1 : 0) as Row | undefined;
@@ -298,6 +307,63 @@ export class Repository {
       VALUES (?,?,?,?,?,?,?,?,?,?)`).run(p.productId, p.marketplace, p.priceType, p.price, p.sampleCount ?? null, p.observedAt,
       p.source, p.isDemo ? 1 : 0, p.note ?? null, nowIso());
     return { price: toPrice(this.db.prepare('SELECT * FROM market_prices WHERE id = ?').get(Number(r.lastInsertRowid)) as Row), duplicate: false };
+  }
+
+  /** 自動算出した推定相場（source が指定値のもの）を置き換える。price が null なら削除のみ */
+  replaceAutoEstimate(args: { productId: number; marketplace: Marketplace; isDemo: boolean; source: string; price: number | null;
+    sampleCount?: number; observedAt?: string; note?: string }): 'saved' | 'removed' | 'none' {
+    const del = this.db.prepare(`DELETE FROM market_prices WHERE product_id=? AND marketplace=? AND price_type='estimate' AND source=? AND is_demo=?`)
+      .run(args.productId, args.marketplace, args.source, args.isDemo ? 1 : 0);
+    if (args.price == null) return Number(del.changes) > 0 ? 'removed' : 'none';
+    this.db.prepare(`INSERT INTO market_prices (product_id,marketplace,price_type,price,sample_count,observed_at,source,is_demo,note,created_at)
+      VALUES (?,?,'estimate',?,?,?,?,?,?,?)`).run(args.productId, args.marketplace, args.price, args.sampleCount ?? null,
+      args.observedAt ?? nowIso(), args.source, args.isDemo ? 1 : 0, args.note ?? null, nowIso());
+    return 'saved';
+  }
+
+  /**
+   * 重複商品の統合：mergeIds の在庫・相場を keepId に移し、keepId の空欄（JAN・ISBN・画像・定価・送料等）を補ってから削除する。
+   * 同じ店舗の在庫が両方にある場合は、確認日時が新しい方を残す。実データとデモは統合しない。
+   */
+  mergeProducts(keepId: number, mergeIds: number[]): Product {
+    return this.tx(() => {
+      const keep = this.getProduct(keepId);
+      if (!keep) throw new Error('統合先の商品が見つかりません');
+      for (const id of mergeIds) {
+        if (id === keepId) continue;
+        const other = this.getProduct(id);
+        if (!other) throw new Error(`商品ID ${id} が見つかりません`);
+        if (other.isDemo !== keep.isDemo) throw new Error('実データとデモデータは統合できません');
+        for (const o of this.listOffersForProduct(id)) {
+          const dup = this.db.prepare('SELECT * FROM stock_offers WHERE product_id = ? AND store_id IS ? AND is_demo = ?')
+            .get(keepId, o.storeId, o.isDemo ? 1 : 0) as Row | undefined;
+          if (!dup) { this.db.prepare('UPDATE stock_offers SET product_id = ? WHERE id = ?').run(keepId, o.id); continue; }
+          const kept = toOffer(dup);
+          if ((o.checkedAt ?? '') > (kept.checkedAt ?? '')) {
+            this.db.prepare('DELETE FROM stock_offers WHERE id = ?').run(kept.id);
+            this.db.prepare('UPDATE stock_offers SET product_id = ? WHERE id = ?').run(keepId, o.id);
+          } else this.db.prepare('DELETE FROM stock_offers WHERE id = ?').run(o.id);
+        }
+        for (const p of this.listPricesForProduct(id)) {
+          const dup = this.db.prepare(`SELECT id FROM market_prices WHERE product_id=? AND marketplace=? AND price_type=? AND price=? AND observed_at=? AND is_demo=?`)
+            .get(keepId, p.marketplace, p.priceType, p.price, p.observedAt, p.isDemo ? 1 : 0) as Row | undefined;
+          if (dup) this.db.prepare('DELETE FROM market_prices WHERE id = ?').run(p.id);
+          else this.db.prepare('UPDATE market_prices SET product_id = ? WHERE id = ?').run(keepId, p.id);
+        }
+        const cur = this.getProduct(keepId)!;
+        this.db.prepare(`UPDATE products SET jan=?,isbn=?,image_url=?,shipping_override=?,other_cost_override=?,list_price=?,list_price_source=?,updated_at=? WHERE id=?`)
+          .run(cur.jan ?? other.jan, cur.isbn ?? other.isbn, cur.imageUrl ?? other.imageUrl,
+            cur.shippingOverride ?? other.shippingOverride, cur.otherCostOverride ?? other.otherCostOverride,
+            cur.listPrice ?? other.listPrice, cur.listPrice != null ? cur.listPriceSource : other.listPriceSource, nowIso(), keepId);
+        this.db.prepare('DELETE FROM products WHERE id = ?').run(id);
+      }
+      return this.getProduct(keepId)!;
+    });
+  }
+
+  countByProduct(table: 'stock_offers' | 'market_prices'): Map<number, number> {
+    const rows = this.db.prepare(`SELECT product_id, COUNT(*) c FROM ${table} GROUP BY product_id`).all() as Row[];
+    return new Map(rows.map((r) => [Number(r.product_id), Number(r.c)]));
   }
 
   // ---------- demo ----------

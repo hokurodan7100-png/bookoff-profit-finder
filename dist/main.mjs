@@ -249,6 +249,10 @@ var Repository = class {
     this.db = db;
   }
   db;
+  /** この接続で行われた変更（追加・更新・削除）の累計。一覧のキャッシュ無効化に使う */
+  changeCount() {
+    return Number(this.db.prepare("SELECT total_changes() c").get().c);
+  }
   tx(fn) {
     this.db.exec("BEGIN");
     try {
@@ -506,6 +510,10 @@ var Repository = class {
   listPricesForProduct(productId) {
     return this.db.prepare("SELECT * FROM market_prices WHERE product_id = ? ORDER BY observed_at DESC, id DESC").all(productId).map(toPrice);
   }
+  getPrice(id) {
+    const r = this.db.prepare("SELECT * FROM market_prices WHERE id = ?").get(id);
+    return r ? toPrice(r) : null;
+  }
   insertPrice(p) {
     const dup = this.db.prepare(`SELECT * FROM market_prices WHERE product_id=? AND marketplace=? AND price_type=? AND price=? AND observed_at=? AND is_demo=?`).get(p.productId, p.marketplace, p.priceType, p.price, p.observedAt, p.isDemo ? 1 : 0);
     if (dup) return { price: toPrice(dup), duplicate: true };
@@ -523,6 +531,75 @@ var Repository = class {
       nowIso()
     );
     return { price: toPrice(this.db.prepare("SELECT * FROM market_prices WHERE id = ?").get(Number(r.lastInsertRowid))), duplicate: false };
+  }
+  /** 自動算出した推定相場（source が指定値のもの）を置き換える。price が null なら削除のみ */
+  replaceAutoEstimate(args) {
+    const del = this.db.prepare(`DELETE FROM market_prices WHERE product_id=? AND marketplace=? AND price_type='estimate' AND source=? AND is_demo=?`).run(args.productId, args.marketplace, args.source, args.isDemo ? 1 : 0);
+    if (args.price == null) return Number(del.changes) > 0 ? "removed" : "none";
+    this.db.prepare(`INSERT INTO market_prices (product_id,marketplace,price_type,price,sample_count,observed_at,source,is_demo,note,created_at)
+      VALUES (?,?,'estimate',?,?,?,?,?,?,?)`).run(
+      args.productId,
+      args.marketplace,
+      args.price,
+      args.sampleCount ?? null,
+      args.observedAt ?? nowIso(),
+      args.source,
+      args.isDemo ? 1 : 0,
+      args.note ?? null,
+      nowIso()
+    );
+    return "saved";
+  }
+  /**
+   * 重複商品の統合：mergeIds の在庫・相場を keepId に移し、keepId の空欄（JAN・ISBN・画像・定価・送料等）を補ってから削除する。
+   * 同じ店舗の在庫が両方にある場合は、確認日時が新しい方を残す。実データとデモは統合しない。
+   */
+  mergeProducts(keepId, mergeIds) {
+    return this.tx(() => {
+      const keep = this.getProduct(keepId);
+      if (!keep) throw new Error("\u7D71\u5408\u5148\u306E\u5546\u54C1\u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093");
+      for (const id of mergeIds) {
+        if (id === keepId) continue;
+        const other = this.getProduct(id);
+        if (!other) throw new Error(`\u5546\u54C1ID ${id} \u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093`);
+        if (other.isDemo !== keep.isDemo) throw new Error("\u5B9F\u30C7\u30FC\u30BF\u3068\u30C7\u30E2\u30C7\u30FC\u30BF\u306F\u7D71\u5408\u3067\u304D\u307E\u305B\u3093");
+        for (const o of this.listOffersForProduct(id)) {
+          const dup = this.db.prepare("SELECT * FROM stock_offers WHERE product_id = ? AND store_id IS ? AND is_demo = ?").get(keepId, o.storeId, o.isDemo ? 1 : 0);
+          if (!dup) {
+            this.db.prepare("UPDATE stock_offers SET product_id = ? WHERE id = ?").run(keepId, o.id);
+            continue;
+          }
+          const kept = toOffer(dup);
+          if ((o.checkedAt ?? "") > (kept.checkedAt ?? "")) {
+            this.db.prepare("DELETE FROM stock_offers WHERE id = ?").run(kept.id);
+            this.db.prepare("UPDATE stock_offers SET product_id = ? WHERE id = ?").run(keepId, o.id);
+          } else this.db.prepare("DELETE FROM stock_offers WHERE id = ?").run(o.id);
+        }
+        for (const p of this.listPricesForProduct(id)) {
+          const dup = this.db.prepare(`SELECT id FROM market_prices WHERE product_id=? AND marketplace=? AND price_type=? AND price=? AND observed_at=? AND is_demo=?`).get(keepId, p.marketplace, p.priceType, p.price, p.observedAt, p.isDemo ? 1 : 0);
+          if (dup) this.db.prepare("DELETE FROM market_prices WHERE id = ?").run(p.id);
+          else this.db.prepare("UPDATE market_prices SET product_id = ? WHERE id = ?").run(keepId, p.id);
+        }
+        const cur = this.getProduct(keepId);
+        this.db.prepare(`UPDATE products SET jan=?,isbn=?,image_url=?,shipping_override=?,other_cost_override=?,list_price=?,list_price_source=?,updated_at=? WHERE id=?`).run(
+          cur.jan ?? other.jan,
+          cur.isbn ?? other.isbn,
+          cur.imageUrl ?? other.imageUrl,
+          cur.shippingOverride ?? other.shippingOverride,
+          cur.otherCostOverride ?? other.otherCostOverride,
+          cur.listPrice ?? other.listPrice,
+          cur.listPrice != null ? cur.listPriceSource : other.listPriceSource,
+          nowIso(),
+          keepId
+        );
+        this.db.prepare("DELETE FROM products WHERE id = ?").run(id);
+      }
+      return this.getProduct(keepId);
+    });
+  }
+  countByProduct(table) {
+    const rows = this.db.prepare(`SELECT product_id, COUNT(*) c FROM ${table} GROUP BY product_id`).all();
+    return new Map(rows.map((r) => [Number(r.product_id), Number(r.c)]));
   }
   // ---------- demo ----------
   countDemo() {
@@ -4597,6 +4674,27 @@ var coerce = {
 };
 var NEVER = INVALID;
 
+// src/shared/codes.ts
+function isbn10to13(isbn10) {
+  const s = isbn10.toUpperCase();
+  if (!/^\d{9}[\dX]$/.test(s)) return null;
+  const body = `978${s.slice(0, 9)}`;
+  const sum = [...body].reduce((acc, d, i) => acc + Number(d) * (i % 2 === 0 ? 1 : 3), 0);
+  return body + String((10 - sum % 10) % 10);
+}
+function productCodes(p) {
+  const out = /* @__PURE__ */ new Set();
+  if (p.jan) out.add(p.jan);
+  if (p.isbn) out.add(p.isbn.length === 10 ? isbn10to13(p.isbn) ?? p.isbn : p.isbn);
+  return [...out];
+}
+function median(values) {
+  if (!values.length) return null;
+  const s = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(s.length / 2);
+  return s.length % 2 ? s[mid] : Math.round((s[mid - 1] + s[mid]) / 2);
+}
+
 // src/shared/profit.ts
 function roundYen(v, mode) {
   if (mode === "floor") return Math.floor(v);
@@ -5779,7 +5877,8 @@ var DEFAULT_SETTINGS = {
   otherCost: 0,
   priceTypePriority: ["estimate", "sold", "listing"],
   rounding: "floor",
-  stockFreshDays: 3
+  stockFreshDays: 3,
+  estimateDays: 30
 };
 var STORE_SEED_SOURCE = stores_seed_default.source;
 var STORE_SEED_VERIFIED_AT = stores_seed_default.verifiedAt;
@@ -6020,13 +6119,23 @@ function buildRows(repo, now = Date.now()) {
   }
   return rows;
 }
+var ROWS_TTL_MS = 6e4;
+var rowsCache = /* @__PURE__ */ new WeakMap();
+function cachedRows(repo, now = Date.now()) {
+  const changes = repo.changeCount();
+  const c = rowsCache.get(repo);
+  if (c && c.changes === changes && now - c.at < ROWS_TTL_MS) return c.rows;
+  const rows = buildRows(repo, now);
+  rowsCache.set(repo, { changes, at: now, rows });
+  return rows;
+}
 function queryItems(repo, f) {
-  const all = buildRows(repo);
+  const all = cachedRows(repo);
   const rows = sortRows(applyFilters(all, f), f.sort, f.marketplace);
   return { rows, total: all.length };
 }
 function summarizeStores(repo, dataKind = "all", now = Date.now()) {
-  const rows = applyFilters(buildRows(repo, now), { dataKind, profitOnly: false });
+  const rows = applyFilters(cachedRows(repo, now), { dataKind, profitOnly: false });
   const by = /* @__PURE__ */ new Map();
   for (const r of rows) {
     if (!r.store) continue;
@@ -6048,6 +6157,70 @@ function summarizeStores(repo, dataKind = "all", now = Date.now()) {
     by.set(r.store.id, s);
   }
   return [...by.values()];
+}
+var AUTO_ESTIMATE_SOURCE = "\u81EA\u52D5\u7B97\u51FA\uFF08\u58F2\u5374\u6E08\u307F\u4FA1\u683C\u306E\u4E2D\u592E\u5024\uFF09";
+function recomputeEstimates(repo, opts = {}) {
+  const days = getSettings(repo).estimateDays ?? 30;
+  const res = { days, saved: 0, removed: 0 };
+  const since = new Date((opts.now ?? Date.now()) - days * 864e5).toISOString();
+  const ids = opts.productIds ?? repo.listProducts().map((p) => p.id);
+  repo.tx(() => {
+    for (const id of ids) {
+      const prices = repo.listPricesForProduct(id);
+      for (const m of MARKETPLACES) {
+        for (const isDemo of [false]) {
+          const sold = days > 0 ? prices.filter((p) => p.marketplace === m && p.priceType === "sold" && p.isDemo === isDemo && p.observedAt >= since) : [];
+          const price2 = median(sold.map((p) => p.price));
+          const latest = sold.map((p) => p.observedAt).sort().at(-1);
+          const r = repo.replaceAutoEstimate({
+            productId: id,
+            marketplace: m,
+            isDemo,
+            source: AUTO_ESTIMATE_SOURCE,
+            price: price2,
+            sampleCount: sold.length,
+            observedAt: latest,
+            note: `\u76F4\u8FD1${days}\u65E5\u306E\u58F2\u5374\u6E08\u307F\u4FA1\u683C ${sold.length}\u4EF6\u306E\u4E2D\u592E\u5024`
+          });
+          if (r === "saved") res.saved++;
+          if (r === "removed") res.removed++;
+        }
+      }
+    }
+  });
+  return res;
+}
+function findDuplicates(repo) {
+  const products = repo.listProducts();
+  const offers = repo.countByProduct("stock_offers");
+  const prices = repo.countByProduct("market_prices");
+  const parent = /* @__PURE__ */ new Map();
+  const find = (x) => {
+    const p = parent.get(x) ?? x;
+    if (p === x) return x;
+    const r = find(p);
+    parent.set(x, r);
+    return r;
+  };
+  const owner = /* @__PURE__ */ new Map();
+  for (const p of products) {
+    for (const c of productCodes(p)) {
+      const key = `${p.isDemo ? "D" : "R"}:${c}`;
+      const o = owner.get(key);
+      if (o == null) owner.set(key, p.id);
+      else parent.set(find(p.id), find(o));
+    }
+  }
+  const groups = /* @__PURE__ */ new Map();
+  for (const p of products) {
+    const r = find(p.id);
+    groups.set(r, [...groups.get(r) ?? [], p]);
+  }
+  return [...groups.values()].filter((g) => g.length > 1).map((g) => ({
+    code: productCodes(g[0])[0],
+    isDemo: g[0].isDemo,
+    products: g.map((p) => ({ id: p.id, name: p.name, jan: p.jan, isbn: p.isbn, offers: offers.get(p.id) ?? 0, prices: prices.get(p.id) ?? 0, createdAt: p.createdAt }))
+  }));
 }
 
 // src/shared/csv.ts
@@ -6381,10 +6554,39 @@ function importMarket(repo, text, filename) {
   });
   return res;
 }
+var Rollback = class extends Error {
+};
+function diffStores(repo, text, filename) {
+  const changes = [];
+  const seen = /* @__PURE__ */ new Set();
+  let result;
+  try {
+    repo.tx(() => {
+      result = importStoresInner(repo, text, filename, (line, action, storeId, officialId, name) => {
+        seen.add(storeId);
+        if (action === "unchanged") return;
+        const ev = repo.listStoreEvents(storeId)[0];
+        changes.push({ line, officialId, name, action, before: action === "updated" ? ev?.before ?? null : null, after: ev?.after ?? null });
+      });
+      throw new Rollback();
+    });
+  } catch (e) {
+    if (!(e instanceof Rollback)) throw e;
+  }
+  const missing = repo.listStores().filter((s) => s.status === "\u55B6\u696D\u4E2D" && !seen.has(s.id)).map((s) => ({ id: s.id, officialId: s.officialId, name: s.name, prefecture: s.prefecture }));
+  return { result, changes, missing };
+}
 function importStores(repo, text, filename) {
+  let res;
+  repo.tx(() => {
+    res = importStoresInner(repo, text, filename);
+  });
+  return res;
+}
+function importStoresInner(repo, text, filename, onRow) {
   const { records } = parseCsvRecords(text);
   const res = emptyResult("stores", records.length);
-  repo.tx(() => {
+  {
     for (const rec of records) {
       const c = canon(rec);
       c.name = c.storeName ?? c.name;
@@ -6429,7 +6631,7 @@ function importStores(repo, text, filename) {
       }
       const officialId = c.storeId ? c.storeId.startsWith("shop") ? c.storeId : `shop${c.storeId}` : null;
       const successorOfficialId = c.successorId ? c.successorId.startsWith("shop") ? c.successorId : `shop${c.successorId}` : null;
-      const { action } = repo.upsertStore({
+      const { action, store } = repo.upsertStore({
         officialId,
         name: c.name,
         brandType,
@@ -6445,8 +6647,9 @@ function importStores(repo, text, filename) {
       if (action === "inserted") res.inserted++;
       else if (action === "updated") res.updated++;
       else res.skipped++;
+      onRow?.(rec.line, action, store.id, officialId, c.name);
     }
-  });
+  }
   return res;
 }
 var TEMPLATES = {
@@ -6630,7 +6833,7 @@ var KeepaAmazonUsedProvider = class _KeepaAmazonUsedProvider {
     return p ? _KeepaAmazonUsedProvider.toPriceInputs(p, (/* @__PURE__ */ new Date()).toISOString()) : [];
   }
 };
-function isbn10to13(isbn10) {
+function isbn10to132(isbn10) {
   const d = isbn10.replace(/[-\s]/g, "").toUpperCase();
   if (!/^\d{9}[\dX]$/.test(d)) return null;
   const body = `978${d.slice(0, 9)}`;
@@ -6716,7 +6919,7 @@ async function refreshAmazonUsed(repo, provider) {
   const targets = /* @__PURE__ */ new Map();
   for (const p of repo.listProducts()) {
     if (p.isDemo) continue;
-    const code = p.jan ?? (p.isbn ? p.isbn.length === 10 ? isbn10to13(p.isbn) : p.isbn : null);
+    const code = p.jan ?? (p.isbn ? p.isbn.length === 10 ? isbn10to132(p.isbn) : p.isbn : null);
     if (!code) continue;
     targets.set(code, [...targets.get(code) ?? [], p.id]);
   }
@@ -6793,7 +6996,8 @@ var settingsSchema = external_exports.object({
   otherCost: external_exports.number().int().min(0).max(1e6),
   priceTypePriority: external_exports.array(external_exports.enum(PRICE_TYPES)).min(1).max(3).refine((a) => new Set(a).size === a.length, "\u91CD\u8907\u4E0D\u53EF"),
   rounding: external_exports.enum(["floor", "round", "ceil"]),
-  stockFreshDays: external_exports.number().int().min(0).max(365)
+  stockFreshDays: external_exports.number().int().min(0).max(365),
+  estimateDays: external_exports.number().int().min(0).max(3650).default(30)
 });
 var optInt = external_exports.union([external_exports.number().int().min(0), external_exports.null()]).optional();
 var productSchema = external_exports.object({
@@ -6944,8 +7148,11 @@ function createHandler(repo, publicDir, providers = createProviders(), opts = {}
       }
       const del = path.match(/^\/api\/(offers|market-prices)\/(\d+)$/);
       if (del && method === "DELETE") {
+        let productId = null;
+        if (del[1] === "market-prices") productId = repo.getPrice(Number(del[2]))?.productId ?? null;
         const ok = del[1] === "offers" ? repo.deleteOffer(Number(del[2])) : repo.deletePrice(Number(del[2]));
         if (!ok) throw new HttpError(404, "\u5BFE\u8C61\u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093");
+        if (productId != null) recomputeEstimates(repo, { productIds: [productId] });
         return send(res, 200, { deleted: true });
       }
       if (method === "POST" && path === "/api/offers") {
@@ -6964,13 +7171,30 @@ function createHandler(repo, publicDir, providers = createProviders(), opts = {}
         const observedAt = parseJstDate(b.observedAt);
         if (!observedAt) throw new HttpError(400, "\u53D6\u5F97\u65E5\u6642\u3092\u89E3\u91C8\u3067\u304D\u307E\u305B\u3093");
         const { price: price2 } = repo.insertPrice({ ...b, sampleCount: b.sampleCount ?? null, observedAt, source: "\u624B\u52D5\u767B\u9332", note: b.note ?? null });
+        if (b.priceType === "sold") recomputeEstimates(repo, { productIds: [b.productId] });
         return send(res, 201, price2);
       }
       const im = path.match(/^\/api\/import\/(products|market|stores)$/);
       if (method === "POST" && im) {
         const b = parse(importSchema, await readBody(req));
+        if (im[1] === "stores" && url.searchParams.get("dryRun") === "1") return send(res, 200, diffStores(repo, b.csv, b.filename));
         const fn = im[1] === "products" ? importProducts : im[1] === "market" ? importMarket : importStores;
-        return send(res, 200, fn(repo, b.csv, b.filename));
+        const result = fn(repo, b.csv, b.filename);
+        const estimates = im[1] === "market" && result.inserted > 0 ? recomputeEstimates(repo) : void 0;
+        return send(res, 200, { ...result, estimates });
+      }
+      if (method === "POST" && path === "/api/estimates/recompute") return send(res, 200, recomputeEstimates(repo));
+      if (method === "GET" && path === "/api/duplicates") return send(res, 200, { groups: findDuplicates(repo) });
+      if (method === "POST" && path === "/api/products/merge") {
+        const b = parse(external_exports.object({ keepId: external_exports.number().int().positive(), mergeIds: external_exports.array(external_exports.number().int().positive()).min(1).max(100) }), await readBody(req));
+        let product;
+        try {
+          product = repo.mergeProducts(b.keepId, b.mergeIds);
+        } catch (e) {
+          throw new HttpError(400, e.message);
+        }
+        recomputeEstimates(repo, { productIds: [b.keepId] });
+        return send(res, 200, { product });
       }
       if (method === "GET" && path === "/api/store-summary") {
         const dk = url.searchParams.get("dataKind");
@@ -6985,7 +7209,9 @@ function createHandler(repo, publicDir, providers = createProviders(), opts = {}
         if (method === "GET") return send(res, 200, getSettings(repo));
         if (method === "PUT") {
           const s = parse(settingsSchema, await readBody(req));
+          const prevDays = getSettings(repo).estimateDays;
           repo.saveSettings(s);
+          if (prevDays !== s.estimateDays) recomputeEstimates(repo);
           return send(res, 200, s);
         }
       }

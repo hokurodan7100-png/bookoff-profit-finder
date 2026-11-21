@@ -1,4 +1,4 @@
-import type { BulkFetchResult, StoreSummary, ImportResult, ItemRow, MarketPrice, Product, ProviderInfo, Settings, StockOffer, Store, StoreEvent } from '../shared/types.ts';
+import type { BulkFetchResult, DuplicateGroup, EstimateResult, StoreDiff, StoreSummary, ImportResult, ItemRow, MarketPrice, Product, ProviderInfo, Settings, StockOffer, Store, StoreEvent } from '../shared/types.ts';
 
 export interface Meta {
   prefectures: string[]; brandTypes: string[]; categories: string[]; stockStatuses: string[]; filterStockStatuses: string[]; storeStatuses: string[];
@@ -30,7 +30,11 @@ export const api = {
   deletePrice: (id: number) => req<unknown>('DELETE', `/api/market-prices/${id}`),
   addOffer: (b: unknown) => req<StockOffer>('POST', '/api/offers', b),
   addPrice: (b: unknown) => req<MarketPrice>('POST', '/api/market-prices', b),
-  importCsv: (kind: 'products' | 'market' | 'stores', csv: string, filename: string) => req<ImportResult>('POST', `/api/import/${kind}`, { csv, filename }),
+  importCsv: (kind: 'products' | 'market' | 'stores', csv: string, filename: string) => req<ImportResult & { estimates?: EstimateResult }>('POST', `/api/import/${kind}`, { csv, filename }),
+  diffStores: (csv: string, filename: string) => req<StoreDiff>('POST', '/api/import/stores?dryRun=1', { csv, filename }),
+  recomputeEstimates: () => req<EstimateResult>('POST', '/api/estimates/recompute'),
+  duplicates: () => req<{ groups: DuplicateGroup[] }>('GET', '/api/duplicates'),
+  mergeProducts: (keepId: number, mergeIds: number[]) => req<{ product: Product }>('POST', '/api/products/merge', { keepId, mergeIds }),
   stores: () => req<{ stores: Store[] }>('GET', '/api/stores'),
   storeSummary: (dataKind = 'all') => req<{ summary: StoreSummary[] }>('GET', `/api/store-summary?dataKind=${dataKind}`),
   storeEvents: (id: number) => req<{ events: StoreEvent[] }>('GET', `/api/stores/${id}/events`),

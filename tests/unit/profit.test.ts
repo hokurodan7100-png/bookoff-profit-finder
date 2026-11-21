@@ -8,7 +8,7 @@ const settings: Settings = {
     mercari: { feeRatePercent: 10, shipping: 210 }, yahoo_fleamarket: { feeRatePercent: 5, shipping: 175 },
     amazon_used: { feeRatePercent: 15, shipping: 200, categoryFees: { 本: { fixedFee: 80 }, 家電: { feeRatePercent: 8, minFee: 30 } } },
   },
-  otherCost: 50, priceTypePriority: ['estimate', 'sold', 'listing'], rounding: 'floor', stockFreshDays: 3,
+  otherCost: 50, priceTypePriority: ['estimate', 'sold', 'listing'], rounding: 'floor', stockFreshDays: 3, estimateDays: 30,
 };
 let id = 0;
 const mp = (p: Partial<MarketPrice>): MarketPrice => ({

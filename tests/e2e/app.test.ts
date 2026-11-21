@@ -282,6 +282,43 @@ describe('PC（1366×900）', () => {
     await page.close();
   });
 
+  it('取込・出力：重複商品を統合し、店舗マスタCSVの差分を保存せずに確認できる', async () => {
+    const page = await browser.newPage({ viewport: { width: 1366, height: 900 } });
+    const csv = ['商品名,JAN,ISBN,カテゴリ,店舗ID,BOOKOFF価格', '重複テスト本,9784101010014,,本,shop10145,100', '重複テスト本（ISBN）,,4101010013,本,shop10259,120'];
+    await fetch(`${url}/api/import/products`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ csv: csv.join('\n'), filename: 'dup.csv' }) });
+    const errors = await open(page, '/#/import');
+    const group = page.getByTestId('dup-group');
+    await group.waitFor();
+    assert.equal(await group.count(), 1);
+    page.once('dialog', (d) => d.accept());
+    await group.locator('[data-merge]').first().click();
+    await page.getByTestId('dups-empty').waitFor();
+    const items = await (await fetch(`${url}/api/items?profitOnly=0&q=${encodeURIComponent('重複テスト本')}`)).json();
+    assert.equal(new Set(items.rows.map((r: { product: { id: number } }) => r.product.id)).size, 1);
+    assert.equal(items.rows.length, 2); // 2店舗の在庫は1商品にまとまる
+
+    await page.setInputFiles('#store-diff', { name: 'stores.csv', mimeType: 'text/csv',
+      buffer: Buffer.from('公式店舗ID,店舗名,都道府県,所在地\nshop99997,BOOKOFF 差分テスト店,静岡県,静岡県静岡市1-1\n') });
+    const diff = page.getByTestId('store-diff');
+    await diff.waitFor();
+    assert.match(await diff.innerText(), /追加 1/);
+    assert.equal(await page.getByTestId('store-diff-missing').locator('li').count(), 102);
+    const meta = await (await fetch(`${url}/api/meta`)).json();
+    assert.equal(meta.counts.stores, 102); // 保存されていない
+    await page.screenshot({ path: join(SHOTS, 'pc-import-tools.png'), fullPage: true });
+    assert.deepEqual(errors, []);
+    await page.close();
+  });
+
+  it('設定：推定相場の期間を表示し、再計算できる', async () => {
+    const page = await browser.newPage({ viewport: { width: 1366, height: 900 } });
+    await open(page, '/#/settings');
+    assert.equal(await page.inputValue('input[name=estimateDays]'), '30');
+    await page.click('#recompute');
+    await page.getByText(/推定相場を\d+件算出しました/).waitFor();
+    await page.close();
+  });
+
   it('店舗マスタ・データ取得元（未実装表示）', async () => {
     const page = await browser.newPage({ viewport: { width: 1366, height: 900 } });
     await open(page, '/#/stores');

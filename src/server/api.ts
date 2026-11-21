@@ -4,9 +4,9 @@ import { timingSafeEqual, createHash } from 'node:crypto';
 import { extname, join, normalize } from 'node:path';
 import { z } from 'zod';
 import type { Repository } from './repository.ts';
-import { queryItems, getSettings, summarizeStores } from './service.ts';
+import { queryItems, getSettings, summarizeStores, recomputeEstimates, findDuplicates } from './service.ts';
 import { filtersFromParams } from '../shared/filters.ts';
-import { exportRowsCsv, importMarket, importProducts, importStores, parseJstDate, TEMPLATES } from './importers.ts';
+import { diffStores, exportRowsCsv, importMarket, importProducts, importStores, parseJstDate, TEMPLATES } from './importers.ts';
 import { seedDemo, STORE_SEED_SOURCE, STORE_SEED_VERIFIED_AT } from './seed.ts';
 import { createProviders, refreshAmazonUsed, runProvider } from './providers/registry.ts';
 import { KeepaAmazonUsedProvider } from './providers/keepa.ts';
@@ -63,6 +63,7 @@ const settingsSchema = z.object({
   priceTypePriority: z.array(z.enum(PRICE_TYPES)).min(1).max(3).refine((a) => new Set(a).size === a.length, '重複不可'),
   rounding: z.enum(['floor', 'round', 'ceil']),
   stockFreshDays: z.number().int().min(0).max(365),
+  estimateDays: z.number().int().min(0).max(3650).default(30),
 });
 
 const optInt = z.union([z.number().int().min(0), z.null()]).optional();
@@ -189,8 +190,11 @@ export function createHandler(repo: Repository, publicDir: string, providers: An
       }
       const del = path.match(/^\/api\/(offers|market-prices)\/(\d+)$/);
       if (del && method === 'DELETE') {
+        let productId: number | null = null;
+        if (del[1] === 'market-prices') productId = repo.getPrice(Number(del[2]))?.productId ?? null;
         const ok = del[1] === 'offers' ? repo.deleteOffer(Number(del[2])) : repo.deletePrice(Number(del[2]));
         if (!ok) throw new HttpError(404, '対象が見つかりません');
+        if (productId != null) recomputeEstimates(repo, { productIds: [productId] });
         return send(res, 200, { deleted: true });
       }
       if (method === 'POST' && path === '/api/offers') {
@@ -209,13 +213,26 @@ export function createHandler(repo: Repository, publicDir: string, providers: An
         const observedAt = parseJstDate(b.observedAt);
         if (!observedAt) throw new HttpError(400, '取得日時を解釈できません');
         const { price } = repo.insertPrice({ ...b, sampleCount: b.sampleCount ?? null, observedAt, source: '手動登録', note: b.note ?? null });
+        if (b.priceType === 'sold') recomputeEstimates(repo, { productIds: [b.productId] });
         return send(res, 201, price);
       }
       const im = path.match(/^\/api\/import\/(products|market|stores)$/);
       if (method === 'POST' && im) {
         const b = parse(importSchema, await readBody(req));
+        if (im[1] === 'stores' && url.searchParams.get('dryRun') === '1') return send(res, 200, diffStores(repo, b.csv, b.filename));
         const fn = im[1] === 'products' ? importProducts : im[1] === 'market' ? importMarket : importStores;
-        return send(res, 200, fn(repo, b.csv, b.filename));
+        const result = fn(repo, b.csv, b.filename);
+        const estimates = im[1] === 'market' && result.inserted > 0 ? recomputeEstimates(repo) : undefined;
+        return send(res, 200, { ...result, estimates });
+      }
+      if (method === 'POST' && path === '/api/estimates/recompute') return send(res, 200, recomputeEstimates(repo));
+      if (method === 'GET' && path === '/api/duplicates') return send(res, 200, { groups: findDuplicates(repo) });
+      if (method === 'POST' && path === '/api/products/merge') {
+        const b = parse(z.object({ keepId: z.number().int().positive(), mergeIds: z.array(z.number().int().positive()).min(1).max(100) }), await readBody(req));
+        let product;
+        try { product = repo.mergeProducts(b.keepId, b.mergeIds); } catch (e) { throw new HttpError(400, (e as Error).message); }
+        recomputeEstimates(repo, { productIds: [b.keepId] });
+        return send(res, 200, { product });
       }
       if (method === 'GET' && path === '/api/store-summary') {
         const dk = url.searchParams.get('dataKind');
@@ -230,7 +247,9 @@ export function createHandler(repo: Repository, publicDir: string, providers: An
         if (method === 'GET') return send(res, 200, getSettings(repo));
         if (method === 'PUT') {
           const s = parse(settingsSchema, await readBody(req));
+          const prevDays = getSettings(repo).estimateDays;
           repo.saveSettings(s);
+          if (prevDays !== s.estimateDays) recomputeEstimates(repo);
           return send(res, 200, s);
         }
       }

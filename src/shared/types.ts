@@ -99,6 +99,8 @@ export interface Settings {
   rounding: 'floor' | 'round' | 'ceil';
   /** 「在庫あり」をこの日数を過ぎたら「要再確認」として扱う（0で無効） */
   stockFreshDays: number;
+  /** 推定相場の自動算出に使う売却済み価格の期間（直近N日。0で自動算出しない） */
+  estimateDays: number;
 }
 
 export interface ProfitResult {
@@ -230,6 +232,30 @@ export interface StoreSummary {
   profitSumInStock: number;
   /** この店舗の在庫を最後に確認した日時 */
   lastCheckedAt: string | null;
+}
+
+/** 推定相場の自動算出の結果 */
+export interface EstimateResult {
+  days: number;
+  /** 推定相場を保存した（商品×販路）の件数 */
+  saved: number;
+  /** 期間内の売却済み価格が無くなり、以前の自動算出値を削除した件数 */
+  removed: number;
+}
+
+/** 同一商品（JAN/ISBNが同じ）と思われる商品のまとまり */
+export interface DuplicateGroup {
+  code: string;
+  isDemo: boolean;
+  products: { id: number; name: string; jan: string | null; isbn: string | null; offers: number; prices: number; createdAt: string }[];
+}
+
+/** 店舗マスタCSVの差分確認（保存しない） */
+export interface StoreDiff {
+  result: ImportResult;
+  changes: { line: number; officialId: string | null; name: string; action: 'inserted' | 'updated'; before?: Record<string, unknown> | null; after?: Record<string, unknown> | null }[];
+  /** DBでは営業中なのにCSVに無い店舗（閉店・改称の候補） */
+  missing: { id: number; officialId: string | null; name: string; prefecture: string }[];
 }
 
 export interface BulkFetchResult {

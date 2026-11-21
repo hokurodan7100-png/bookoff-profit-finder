@@ -1,10 +1,11 @@
+import { openDetail } from './detail.ts';
 import { api, type Meta } from '../api.ts';
 import { $, $$, html, mount, options, toast, type Raw } from '../dom.ts';
 import { decodeCsvBytes } from '../../shared/csv.ts';
 import { jstDateTime, signedYen, yen } from '../../shared/format.ts';
 import { BRAND_GROUP_LABEL, CATEGORIES, MARKETPLACE_LABEL, MARKETPLACES, NA, PRICE_TYPE_LABEL, type Category, type Marketplace } from '../../shared/constants.ts';
 import { calcProfit, feeTerms } from '../../shared/profit.ts';
-import type { CategoryFee, ImportResult, Settings, Store, StoreSummary } from '../../shared/types.ts';
+import type { CategoryFee, DuplicateGroup, EstimateResult, ImportResult, Settings, Store, StoreDiff, StoreSummary } from '../../shared/types.ts';
 import type { PriceType } from '../../shared/constants.ts';
 import { openDialog } from './detail.ts';
 
@@ -127,10 +128,35 @@ const IMPORTS: { kind: 'products' | 'market' | 'stores'; title: string; desc: Ra
   { kind: 'stores', title: '店舗マスタ（閉店・移転・改称の反映）', desc: html`列：公式店舗ID, 店舗名, 都道府県, 所在地, 店舗種別, 公式URL, 状態（営業中／閉店／移転／改称／要確認）, 後継店舗ID, 確認日時, 備考。<br>静岡県・山梨県・神奈川県以外は拒否します。` },
 ];
 
-function resultView(r: ImportResult, encoding: string): Raw {
+function resultView(r: ImportResult & { estimates?: EstimateResult }, encoding: string): Raw {
   return html`<div class="mt-3 rounded-lg ${r.errors.length ? 'bg-amber-50' : 'bg-emerald-50'} p-3 text-sm" data-testid="import-result">
     <div>${r.total}行を処理（${encoding}）：追加 <b>${r.inserted}</b>・更新 <b>${r.updated}</b>・スキップ <b>${r.skipped}</b>・エラー <b>${r.errors.length}</b></div>
+    ${r.estimates ? html`<div class="mt-1 text-xs text-slate-600" data-testid="import-estimates">売却済み価格から推定相場を自動算出：${r.estimates.saved}件（直近${r.estimates.days}日の中央値）</div>` : ''}
     ${r.errors.length ? html`<ul class="mt-2 max-h-48 list-disc overflow-auto pl-5 text-xs text-red-700">${r.errors.map((e) => html`<li>${e.line}行目：${e.message}</li>`)}</ul>` : ''}</div>`;
+}
+
+function storeDiffView(d: StoreDiff): Raw {
+  const r = d.result;
+  const fmt = (o: Record<string, unknown> | null | undefined) => o ? Object.entries(o).filter(([, v]) => v != null).map(([k, v]) => `${({ name: '店舗名', address: '所在地', status: '状態' } as Record<string, string>)[k] ?? k}：${v}`).join('、') : '';
+  return html`<div class="mt-2 rounded-lg border border-slate-200 bg-white p-3" data-testid="store-diff">
+    <div class="text-sm">${r.total}行を照合：追加 <b>${d.changes.filter((c) => c.action === 'inserted').length}</b>・変更 <b>${d.changes.filter((c) => c.action === 'updated').length}</b>・変更なし ${r.skipped - r.errors.length}・エラー ${r.errors.length}・<span class="text-orange-700">CSVに無い営業中の店舗 <b>${d.missing.length}</b></span>（まだ保存していません）</div>
+    ${d.changes.length ? html`<ul class="mt-2 max-h-48 list-disc overflow-auto pl-5 text-xs">${d.changes.map((c) => html`<li>${c.line}行目 ${c.action === 'inserted' ? '【追加】' : '【変更】'}${c.officialId ?? ''} ${c.name}${c.action === 'updated' ? html`：${fmt(c.before)} → ${fmt(c.after)}` : ''}</li>`)}</ul>` : ''}
+    ${d.missing.length ? html`<div class="mt-2 text-xs font-semibold text-orange-700">CSVに無い店舗（閉店なら「状態」を閉店にした行をCSVに加えて取り込む）</div>
+      <ul class="max-h-48 list-disc overflow-auto pl-5 text-xs" data-testid="store-diff-missing">${d.missing.map((m) => html`<li>${m.officialId ?? ''} ${m.name}（${m.prefecture}）</li>`)}</ul>` : ''}
+    ${r.errors.length ? html`<ul class="mt-2 list-disc pl-5 text-xs text-red-700">${r.errors.map((e) => html`<li>${e.line}行目：${e.message}</li>`)}</ul>` : ''}</div>`;
+}
+
+function dupsView(groups: DuplicateGroup[]): Raw {
+  if (!groups.length) return html`<p class="text-sm text-emerald-700" data-testid="dups-empty">重複している商品はありません。</p>`;
+  return html`<div class="space-y-3">${groups.map((g) => {
+    // 在庫・相場が多い商品（同数なら古い商品）を統合先の候補にする
+    const sorted = [...g.products].sort((a, b) => (b.offers + b.prices) - (a.offers + a.prices) || a.createdAt.localeCompare(b.createdAt));
+    return html`<div class="rounded-lg border border-slate-200 p-3 text-sm" data-testid="dup-group">
+      <div class="mb-1 text-xs text-slate-500">コード ${g.code}${g.isDemo ? '（デモ）' : ''}</div>
+      <ul class="space-y-1">${sorted.map((p) => html`<li class="flex flex-wrap items-center gap-2">
+        <button type="button" class="text-left underline" data-detail="${p.id}">ID ${p.id}：${p.name}</button><span class="text-xs text-slate-500">在庫${p.offers}・相場${p.prices}</span>
+        <button class="btn-secondary !py-0.5 text-xs" data-merge="${p.id}" data-others="${sorted.filter((x) => x.id !== p.id).map((x) => x.id).join(',')}">この商品に統合</button></li>`)}</ul></div>`;
+  })}</div>`;
 }
 
 export function renderImport(root: HTMLElement, meta: Meta, onDataChange: (reload?: boolean) => void) {
@@ -139,7 +165,14 @@ export function renderImport(root: HTMLElement, meta: Meta, onDataChange: (reloa
       <div class="mt-3 flex flex-wrap items-center gap-2">
         <input type="file" accept=".csv,text/csv" data-import="${i.kind}" class="block w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-slate-900 file:px-3 file:py-2 file:text-white" aria-label="${i.title} CSVファイル">
         <a class="text-sm text-sky-700 underline" href="/api/templates/${i.kind}.csv">テンプレートCSV</a></div>
+      ${i.kind === 'stores' ? html`<div class="mt-3 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
+        <b>定期見直し：</b>公式の店舗一覧から作ったCSVを「差分だけ確認」で照合すると、保存せずに追加・変更される店舗と、CSVに無い営業中の店舗（閉店・改称の候補）を表示します。確認してから上の欄で取り込んでください。
+        <label class="mt-2 block"><span class="lbl">差分だけ確認（保存しません）</span>
+        <input type="file" accept=".csv,text/csv" id="store-diff" class="block w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-slate-600 file:px-3 file:py-2 file:text-white" aria-label="店舗マスタ 差分確認CSVファイル"></label>
+        <div id="store-diff-result"></div></div>` : ''}
       <div data-result="${i.kind}"></div>`))}
+    ${card('重複商品の統合', html`<p class="text-sm text-slate-600">JAN・ISBNが同じ商品（書籍はISBN-13とJANを同一視、ISBN-10も変換して比較）を表示します。統合すると在庫・相場を1つの商品にまとめ、空欄の項目を補います。同じ店舗の在庫は確認日時が新しい方を残します。</p>
+      <div class="mt-3" id="dups" data-testid="dups"></div>`)}
     ${card('CSVエクスポート', html`<p class="text-sm text-slate-600">一覧画面の現在の絞り込み条件で出力するには、一覧の「CSVエクスポート」を使います。ここからは全件を出力します（Excelで開けるBOM付きUTF-8）。</p>
       <div class="mt-3 flex flex-wrap gap-2"><a class="btn-secondary" href="/api/export.csv">全件をCSVで出力</a>
       <a class="btn-secondary" href="/api/export.csv?dataKind=real">実データのみ出力</a></div>`)}
@@ -159,6 +192,32 @@ export function renderImport(root: HTMLElement, meta: Meta, onDataChange: (reloa
     } catch (e) { toast((e as Error).message, 'error'); }
     input.value = '';
   }));
+  $<HTMLInputElement>('#store-diff', root)!.addEventListener('change', async (ev) => {
+    const input = ev.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    const { text } = decodeCsvBytes(new Uint8Array(await file.arrayBuffer()));
+    try { mount($('#store-diff-result', root)!, storeDiffView(await api.diffStores(text, file.name))); }
+    catch (e) { toast((e as Error).message, 'error'); }
+    input.value = '';
+  });
+  const loadDups = async () => {
+    const el = $('#dups', root)!;
+    const { groups } = await api.duplicates();
+    mount(el, dupsView(groups));
+  };
+  $('#dups', root)!.addEventListener('click', async (e) => {
+    const d = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-detail]');
+    if (d) { openDetail(Number(d.dataset.detail), meta, () => { loadDups(); }); return; }
+    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-merge]');
+    if (!b) return;
+    const keepId = Number(b.dataset.merge);
+    const mergeIds = (b.dataset.others ?? '').split(',').map(Number).filter(Boolean);
+    if (!confirm(`商品ID ${mergeIds.join('・')} を ID ${keepId} に統合します。元に戻せません。よろしいですか？`)) return;
+    try { await api.mergeProducts(keepId, mergeIds); toast('統合しました'); onDataChange(); await loadDups(); }
+    catch (err) { toast((err as Error).message, 'error'); }
+  });
+  loadDups().catch((e) => toast((e as Error).message, 'error'));
   $('#demo-add', root)!.addEventListener('click', async () => { await api.seedDemo(); toast('デモデータを投入しました'); onDataChange(true); });
   $('#demo-del', root)!.addEventListener('click', async () => {
     if (!confirm('デモデータ（架空の商品・在庫・相場）をすべて削除します。実データは削除されません。よろしいですか？')) return;
@@ -191,9 +250,12 @@ export async function renderSettings(root: HTMLElement) {
       <div><span class="lbl">想定販売価格に使う相場の優先順位</span><div class="grid grid-cols-3 gap-2">${prio(0)}${prio(1)}${prio(2)}</div></div>
       <label class="block"><span class="lbl">在庫確認の有効日数（これを過ぎた「在庫あり」は「要再確認」。0で無効）</span>
         <input class="inp" name="stockFreshDays" type="number" min="0" max="365" step="1" value="${s.stockFreshDays}"></label>
+      <label class="block"><span class="lbl">推定相場の自動算出：売却済み価格の期間（直近N日の中央値。0で自動算出しない）</span>
+        <input class="inp" name="estimateDays" type="number" min="0" max="3650" step="1" value="${s.estimateDays}"></label>
       <label class="block"><span class="lbl">手数料の端数処理</span><select class="inp" name="rounding">${options(['floor', 'round', 'ceil'], s.rounding, { floor: '切り捨て', round: '四捨五入', ceil: '切り上げ' })}</select></label>
       <div class="rounded-lg bg-slate-50 p-3 text-sm" id="preview"></div>
-      <button class="btn-primary w-full">設定を保存</button></div>`)}
+      <button class="btn-primary w-full">設定を保存</button>
+      <button type="button" class="btn-secondary w-full" id="recompute">推定相場を今すぐ再計算</button></div>`)}
   </form>`);
   const form = $<HTMLFormElement>('#settings-form', root)!;
   const read = (): Settings => {
@@ -211,6 +273,7 @@ export async function renderSettings(root: HTMLElement) {
     return {
       marketplaces: { mercari: mpCost('mercari'), yahoo_fleamarket: mpCost('yahoo_fleamarket'), amazon_used: { ...mpCost('amazon_used'), categoryFees: amzFees } },
       stockFreshDays: n('stockFreshDays'),
+      estimateDays: n('estimateDays'),
       otherCost: n('other'), priceTypePriority: [...new Set(prioList)] as PriceType[], rounding: fd.get('rounding') as Settings['rounding'],
     };
   };
@@ -224,6 +287,10 @@ export async function renderSettings(root: HTMLElement) {
     mount($('#preview', root)!, html`<div class="mb-1 text-xs text-slate-500">計算例：本を¥500で仕入れ、¥2,000で販売</div>${MARKETPLACES.map(ex)}`);
   };
   form.addEventListener('input', preview);
+  $('#recompute', root)!.addEventListener('click', async () => {
+    try { const r = await api.recomputeEstimates(); toast(`推定相場を${r.saved}件算出しました（直近${r.days}日の売却済み価格の中央値・実データのみ）`); }
+    catch (err) { toast((err as Error).message, 'error'); }
+  });
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     try { await api.saveSettings(read()); toast('設定を保存しました。利益は再計算されます'); } catch (err) { toast((err as Error).message, 'error'); }
