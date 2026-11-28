@@ -54,3 +54,11 @@ Claude（claude.ai/code）と Codex が同じリポジトリで作業する。Gi
 - 作業の報告は `docs/handoff/codex-<作業名>.md` に書いてコミットする（変更点・確認結果・未対応点・Claude に頼みたいこと）。
 - 利用者から依頼されたときに、Claude が `codex/*` ブランチを確認し、テストが通れば統合ブランチに取り込み、取り込み結果を `docs/handoff/claude-log.md` に追記する。Codex は作業前にこのログを読む。
 - 同じファイルを同時に大きく変えないよう、作業前に `docs/tasks.md` の該当タスクに「（Codex作業中）」と書いてプッシュする。
+
+## Muse（イロ）との連携（2026-11-28追加）
+
+- Muse（イロ）もこのファイルを読む。Claude Code・Codexと同じルールで作業する。
+- 作業は1タスク＝1ブランチ。統合ブランチ `claude/zen-maxwell-f115t5` へ直接pushしない。PRを作り、内容を要約する。
+- 作業前に `docs/handoff/claude-log.md` と `docs/tasks.md` を読む。終わったら引き継ぎログに追記する。
+- 秘密情報（APIキー、パスワード、トークン）はコードやログに書かない。破壊的なコマンドは使わない。
+- 次のタスク：Keepa APIでのAmazon価格の自動取得の動作確認（Codex担当、Museが確認）。
